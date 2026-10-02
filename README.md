@@ -131,9 +131,23 @@ sit on), `limiter.py`, `anubis.py`, `instances.py`, `race.py`, `api.py`, `cli.py
 | `--fresh` | ignore the instance cache and the bad-instance list |
 | `-j N` | instances raced in parallel (default 10; `0`/`1` = serial) |
 | `-v` | live progress log; without it stdout is *only* JSON |
+| `--update` | check PyPI for a newer release now and offer it |
+| `--no-update-check` | never check for a newer release |
 
 By default the tool is silent, so it pipes straight into `jq`. Errors go to
 stderr, exit code 1.
+
+### Update check
+
+A background thread asks PyPI whether a newer release exists **while your
+search is already running**. If one does, you get a `y/N` prompt on stderr
+*after* the results are on screen.
+
+It stays out of the way by construction: at most one request a day (cached in
+`.cache/update_check.json`), skipped entirely when stdout isn't a terminal (so
+`sxng … | jq` can never block on a prompt), never run at all by library code,
+3-second timeout, and every failure — offline, blocked, DNS — is silent.
+`--no-update-check` or `SXNG_NO_UPDATE_CHECK=1` turns it off for good.
 
 Quote multi-word queries (`--input "nasa cosmos"`), or PowerShell hands the
 second word over as a separate argument.
@@ -148,6 +162,7 @@ repeat gets `_2`, `_3`. Safe to delete the folder at any time.
 ```bash
 python tests/test_pow_parser.py      # PoW engine + HTML parser, offline
 python tests/test_rotation.py        # instance rotation, offline
+python tests/test_cli.py             # update check + optional extra, offline
 python tests/live_audit.py           # live sweep over every instance
 ```
 

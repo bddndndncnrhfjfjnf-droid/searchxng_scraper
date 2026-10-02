@@ -30,7 +30,8 @@ config.py       TLS fingerprint, timeouts, where files go, quiet flag
 | [instances.py](searxng_scraper/instances.py) | 150 | instance list, cache, "bad" bookkeeping | "why did it skip everything" |
 | [race.py](searxng_scraper/race.py) | 501 | the escalation ladder and the parallel race | changing search logic |
 | [api.py](searxng_scraper/api.py) | 222 | the public API: `search()`, `SearchResult`, … | writing your own code on top |
-| [cli.py](searxng_scraper/cli.py) | 98 | flags, cheat sheet, stdout, exit codes | adding a flag |
+| [cli.py](searxng_scraper/cli.py) | 122 | flags, cheat sheet, stdout, exit codes | adding a flag |
+| [update.py](searxng_scraper/update.py) | 147 | background "is there a newer release?" check | changing update behaviour |
 
 ### The knobs people actually turn
 
@@ -52,6 +53,29 @@ the engine first would be pure waste: `curl_cffi` (~120 ms, it dlopens libcurl),
 (~150 ms, only `search_async` needs it). `__init__.py` resolves public names on
 first access via PEP 562, and `cli.py` imports the engine only after argument
 parsing. Package import cost is ~35 ms over a bare interpreter.
+
+### The update check
+
+`update.py` runs a daemon thread that asks
+`https://pypi.org/pypi/searchxng_scraper/json` while the search is already in
+flight. By the time results are printed the answer has usually arrived;
+`notice()` joins the thread with a 0.5 s cap and says nothing if it has not.
+
+Every guard exists because the failure mode is not "wrong answer", it is
+"nagging":
+
+| Guard | Why |
+|---|---|
+| everything on stderr | stdout must stay pure JSON for `| jq` |
+| skipped unless stdout **and** stderr are TTYs | a tool that can block on input hangs every script |
+| `[-o -]` disables it | the user explicitly asked for machine-readable output |
+| 24 h cache in `.cache/update_check.json` | one request a day, not one per search |
+| 3 s timeout, every exception swallowed | a failed check must never delay or break a search |
+| stdlib `urllib`, not `curl_cffi` | avoids the ~120 ms import and the Android import failure |
+| never imported by `api.py` | library users get no network call they did not ask for |
+| default answer is no | updating is offered, never performed |
+
+Turn it off with `--no-update-check` or `SXNG_NO_UPDATE_CHECK=1`.
 
 ### Why argon2-cffi is an extra
 

@@ -61,6 +61,11 @@ def main() -> int:
     ap.add_argument("-v", "--verbose", action="store_true",
                     help="show progress lines (instance race, Anubis solves, "
                          "failures); default output is ONLY the results JSON")
+    ap.add_argument("--update", action="store_true",
+                    help="check PyPI for a newer release right now and offer it")
+    ap.add_argument("--no-update-check", action="store_true",
+                    help="never check for a newer release (also: "
+                         "SXNG_NO_UPDATE_CHECK=1)")
     args = ap.parse_args()
 
     if args.pdf and args.profiles:
@@ -68,6 +73,22 @@ def main() -> int:
     if not args.verbose:
         QUIET.set()            # default: mute progress chatter unless -v
     mode = "profiles" if args.profiles else ("pdf" if args.pdf else "web")
+
+    from . import __version__
+    from .update import UpdateCheck
+
+    # Only prompt when there is a human to answer. A pipe, a redirect or an
+    # explicit `-o -` means this is a script, and a script must never block.
+    interactive = (
+        not args.no_update_check
+        and args.output != "-"
+        and sys.stdout.isatty()
+        and sys.stderr.isatty()
+    )
+    checker = (
+        UpdateCheck().start(__version__, force=args.update)
+        if (interactive or args.update) else None
+    )
 
     # Only now is the engine needed. Importing it costs ~300 ms (curl_cffi,
     # asyncio), and everything above this line works without it.
@@ -91,6 +112,9 @@ def main() -> int:
         if args.verbose:
             print_results(out)
             print(f"Saved to {path}")
+
+    if checker is not None:
+        checker.notice(__version__)   # after the results, on stderr only
     return 0
 
 
