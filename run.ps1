@@ -1,13 +1,13 @@
-# Короткие команды вместо длинного пути к python.
-# Запуск из папки проекта:
+# Short commands instead of a long path to python.
+# Run from the project folder:
 #
-#   .\run.ps1 "nasa cosmos"        поиск, результат в results\nasa_cosmos.json
-#   .\run.ps1 "nasa cosmos" -v     то же, но с подробным логом гонки инстансов
-#   .\run.ps1 "nasa" --pdf         режим «только PDF»
-#   .\run.ps1 test                 офлайн-тесты (сеть не нужна, ~1 минута)
-#   .\run.ps1 audit                живой аудит всех инстансов
-#   .\run.ps1 anubis "запрос"      живое демо инстансов за капчей Anubis
-#   .\run.ps1                      памятка (то же, что python main.py)
+#   .\run.ps1 "nasa cosmos"        search, result in results\nasa_cosmos.json
+#   .\run.ps1 "nasa cosmos" -v     same, but with a verbose instance-race log
+#   .\run.ps1 "nasa" --pdf         PDF-only mode
+#   .\run.ps1 test                 offline tests (no network, ~1 minute)
+#   .\run.ps1 audit                live audit of every instance
+#   .\run.ps1 anubis "query"       live demo of Anubis-gated instances
+#   .\run.ps1                      the cheat sheet (same as python main.py)
 
 $py = Join-Path $PSScriptRoot ".venv-lite\Scripts\python.exe"
 if (-not (Test-Path $py)) { $py = "python" }

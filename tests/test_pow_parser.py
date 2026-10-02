@@ -25,7 +25,7 @@ import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # корень проекта
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
 import main
 from main import leading_zero_bits, parse_results_html, solve

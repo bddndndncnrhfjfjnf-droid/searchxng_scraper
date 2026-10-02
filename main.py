@@ -1576,29 +1576,31 @@ def print_results(out: dict) -> None:
 
 
 # ===========================================================================
-# SECTION 6/7: public API - импортируется из твоих других проектов
+# SECTION 6/7: public API - import this from your own projects
 # ===========================================================================
 
 RESULTS_DIR = data_dir("results")
 SLUG_MAX = 60
 
 QUICK_START = """\
-SearXNG meta-search, без браузера. Коротко о том, как пользоваться:
+SearXNG meta-search, no browser. A short cheat sheet:
 
-  Поиск (PowerShell, из папки проекта):
-    .\\run.ps1 "nasa cosmos"          -> results\\nasa_cosmos.json
-    .\\run.ps1 "nasa cosmos" -v       то же + подробный лог гонки инстансов
-    .\\run.ps1 "nato staff" --pdf     режим «только PDF»
-    .\\run.ps1                        эта памятка
+  Installed from PyPI (any shell):
+    sxng --input "nasa cosmos"             -> results/nasa_cosmos.json
+    sxng --input "nasa cosmos" -v          same + verbose instance-race log
+    sxng --input "nato staff" --pdf        PDF-only mode
+    sxng                                 this cheat sheet
 
-  То же без скрипта-обёртки:
+  From a source checkout (PowerShell):
+    .\\run.ps1 "nasa cosmos"               -> results\\nasa_cosmos.json
+    .\\run.ps1 "nato staff" --pdf         PDF-only mode
     .venv-lite\\Scripts\\python.exe main.py --input "nasa cosmos" -n 10
 
-  Проверки (tests\\, сеть не нужна для test_*):
-    .\\run.ps1 test                   офлайн-тесты движка и ротации
-    .\\run.ps1 audit                  живой аудит всех инстансов
+  Checks (tests\\, test_* need no network):
+    .\\run.ps1 test                       offline engine and rotation tests
+    .\\run.ps1 audit                      live audit of every instance
 
-  Подробности про капчи, лимитер и устройство проекта — в README.md
+  Details on the captchas, the limiter and the project layout: README.md
 """
 
 
@@ -1652,7 +1654,7 @@ class SearchResult:
     fetched_at: str
     results: list[dict] = field(default_factory=list)
 
-    # --- удобства доступа ---
+    # --- convenience accessors ---
     def __len__(self) -> int:
         return len(self.results)
 

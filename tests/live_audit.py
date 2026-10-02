@@ -18,7 +18,7 @@ from collections import Counter
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # корень проекта
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
 import main as sx  # single-file build under test
 from main import (  # noqa: E402

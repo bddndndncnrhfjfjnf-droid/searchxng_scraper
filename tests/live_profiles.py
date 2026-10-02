@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # корень проекта
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
 from main import run_search  # noqa: E402
 

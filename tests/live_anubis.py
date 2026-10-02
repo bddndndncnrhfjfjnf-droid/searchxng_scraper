@@ -22,7 +22,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # корень проекта
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
 import main as sx  # the single-file build under test
 
