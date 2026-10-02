@@ -3,7 +3,8 @@ name = "searchxng_scraper"
 version = "0.2.0"
 description = "Browserless SearXNG meta-search: importable library + CLI in one file (solves Anubis/Portico proof-of-work challenges on CPU)"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 authors = [{ name = "badmintonthegoldrush", email = "laaoala7@gmail.com" }]
 keywords = [
@@ -43,5 +44,5 @@ py-modules = ["searxng_search", "main"]
 packages = []
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
