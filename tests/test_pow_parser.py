@@ -27,8 +27,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
-import main
-from main import leading_zero_bits, parse_results_html, solve
+from searxng_scraper import htmlparse, pow as pow_engine
+
+leading_zero_bits = pow_engine.leading_zero_bits
+parse_results_html = htmlparse.parse_results_html
+solve = pow_engine.solve
 
 FAILURES = []
 
@@ -43,7 +46,7 @@ def check(name, cond, detail=""):
 def reference_scan(base: bytes, bits: int, kind: int, endian: str = "big",
                    width: int = 4) -> tuple[str, int]:
     """Single-threaded brute force: minimal nonce with leading zero bits."""
-    k, threshold = main._bits_params(bits)
+    k, threshold = pow_engine._bits_params(bits)
     n = 0
     while True:
         msg = base + (n.to_bytes(width, endian) if kind == 1 else str(n).encode())
@@ -71,7 +74,7 @@ print("1. leading zero bits <-> threshold comparison")
 random.seed(1)
 mismatch = 0
 for bits in range(1, 25):
-    k, threshold = main._bits_params(bits)
+    k, threshold = pow_engine._bits_params(bits)
     for _ in range(400):
         d = random.randbytes(32)
         want = leading_zero_bits(d) >= bits
@@ -129,11 +132,11 @@ print("3. parallel lane partition")
 for nproc in (1, 2, 3, 5, 8):
     stride = nproc + 1
     # lane i owns INLINE_CHUNK+i, INLINE_CHUNK+i+stride, ... (lane 0 = caller)
-    span = 3 * main.INLINE_CHUNK
+    span = 3 * pow_engine.INLINE_CHUNK
     covered: set[int] = set()
     for lane in range(stride):
-        covered |= set(range(main.INLINE_CHUNK + lane, span, stride))
-    want = set(range(main.INLINE_CHUNK, span))
+        covered |= set(range(pow_engine.INLINE_CHUNK + lane, span, stride))
+    want = set(range(pow_engine.INLINE_CHUNK, span))
     check(f"nproc={nproc}: [{span // 3}, {span}) covered by {stride} lanes, "
           "no gaps/overlaps",
           covered == want,

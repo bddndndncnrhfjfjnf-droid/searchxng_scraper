@@ -1,7 +1,7 @@
 [project]
 name = "searchxng_scraper"
-version = "0.2.0"
-description = "Browserless SearXNG meta-search: importable library + CLI in one file (solves Anubis/Portico proof-of-work challenges on CPU)"
+version = "0.3.0"
+description = "Browserless SearXNG meta-search: importable library + CLI that races public instances and solves Anubis/Portico proof-of-work on CPU"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -38,13 +38,14 @@ Issues = "https://github.com/bddndndncnrhfjfjnf-droid/searchxng_scraper/issues"
 
 # Installed console script: sxng --input "nasa cosmos"
 [project.scripts]
-sxng = "main:main"
+sxng = "searxng_scraper.cli:main"
 
-# Two top-level modules: searxng_search (the public import name) and main
-# (the engine plus the CLI). No packages with __init__.py involved.
 [tool.setuptools]
-py-modules = ["searxng_search", "main"]
-packages = []
+# The engine is a package: config -> pow -> limiter/anubis -> instances ->
+# race -> api -> cli. main.py and searxng_search.py stay as thin shims so
+# `python main.py` and `import searxng_search` keep working.
+packages = ["searxng_scraper"]
+py-modules = ["main", "searxng_search"]
 
 [build-system]
 requires = ["setuptools>=77"]

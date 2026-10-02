@@ -10,7 +10,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
-from main import run_search  # noqa: E402
+from searxng_scraper.race import run_search  # noqa: E402
 
 SHAPES = [
     "NATO linkedin profile",

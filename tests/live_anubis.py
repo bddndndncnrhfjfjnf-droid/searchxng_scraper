@@ -24,7 +24,9 @@ from urllib.parse import urlparse
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
-import main as sx  # the single-file build under test
+from searxng_scraper.anubis import _PROBE_CACHE, _drop_cached_cookie, has_anubis
+from searxng_scraper.instances import UA, fetch_instance_list, filter_bad
+from searxng_scraper.race import search_on_instance
 
 QUERY = sys.argv[1] if len(sys.argv) > 1 else "ai agent free"
 
@@ -60,12 +62,12 @@ def main() -> int:
     print(f"cookie cache before: {cookie_summary()}")
 
     # 1. probe: which candidates are Anubis-fronted right now?
-    candidates = sx.fetch_instance_list()
-    usable, _ = sx.filter_bad(candidates)
+    candidates = fetch_instance_list()
+    usable, _ = filter_bad(candidates)
     pool = sorted({c["url"] for c in usable[:30]} | set(KNOWN))
 
     def probe(base: str):
-        return base, sx.has_anubis(base, sx.UA, timeout=8)
+        return base, has_anubis(base, UA, timeout=8)
 
     anubis_instances: list[str] = []
     with ThreadPoolExecutor(max_workers=10) as ex:
@@ -85,12 +87,12 @@ def main() -> int:
     for base in anubis_instances:
         host = urlparse(base).netloc
         print(f"=== {base} ===")
-        sx._drop_cached_cookie(host)   # force a fresh PoW solve
-        sx._PROBE_CACHE.pop(host, None)
+        _drop_cached_cookie(host)   # force a fresh PoW solve
+        _PROBE_CACHE.pop(host, None)
         for attempt in (1, 2, 3):
             t0 = time.perf_counter()
             try:
-                results, path = sx.search_on_instance(base, QUERY)
+                results, path = search_on_instance(base, QUERY)
                 print(f"[OK] {len(results)} results via [{path}] "
                       f"in {time.perf_counter() - t0:.1f}s")
                 for r in results[:3]:

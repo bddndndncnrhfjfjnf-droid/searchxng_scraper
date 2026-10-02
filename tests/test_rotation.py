@@ -7,6 +7,9 @@
   3. parallel race: all failures permanent -> stage B falls back to a
      validator-unworthy set -> error only if literally nothing arrived.
 
+The simulation works by replacing names in the race module's own globals, so
+run_search resolves them exactly the way it does in production.
+
 Run:  python tests/test_rotation.py
 """
 import sys
@@ -16,106 +19,104 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
-import main as sx  # single-file build under test
+from searxng_scraper import race
 
 FAKE_RESULTS = ([{"title": "Fake", "url": "https://x.test/", "content": "s",
                   "engine": "fake"}], "json+simulated")
 
 sleeps: list[float] = []
-sx.time.sleep = lambda s: sleeps.append(s)  # type: ignore[assignment]
+
+# The 21s cooldown pause would make this test take half a minute.
+time.sleep = lambda s: sleeps.append(s)  # type: ignore[assignment]
+
+
+def scenario(try_one, parallel: int, validator=None):
+    """Run one simulated race; returns (winner, path, calls)."""
+    calls: dict[str, int] = {}
+    seen: list[str] = []
+    lock_free = []  # parallel=1 only; the fake needs no locking
+
+    def fake_try(base, query):
+        base = base["url"] if isinstance(base, dict) else base
+        seen.append(base)
+        calls[base] = calls.get(base, 0) + 1
+        return base, try_one(base, calls[base])
+
+    originals = {name: getattr(race, name) for name in
+                 ("_try_one", "fetch_instance_list", "filter_bad",
+                  "remember_failures")}
+    try:
+        race._try_one = fake_try
+        race.fetch_instance_list = lambda fresh=False: [
+            {"url": u, "success": 100, "median": 1 + i, "grade": "A"}
+            for i, u in enumerate(seen_pools[0])
+        ]
+        race.filter_bad = lambda cands: (cands, {})
+        race.remember_failures = lambda failures: None
+        _results, inst, path = race.run_search(
+            "q", 10, parallel=parallel, fresh=True, validator=validator
+        )
+    finally:
+        for name, fn in originals.items():
+            setattr(race, name, fn)
+    return inst, path, calls, lock_free
+
+
+def pool(*urls):
+    seen_pools.append(list(urls))
+
+
+seen_pools: list[list[str]] = []
 
 
 def scenario_1_serial_retry():
     """429 once -> SAME instance retried after the pause -> win."""
-    calls = {"a": 0}
+    pool("a", "b")
 
-    def fake_try(base, query):
-        calls[base[0]] += 1
-        if base[0] == "a" and calls["a"] == 1:
-            return base, RuntimeError("HTTP 429 and HTML fallback failed")
-        return base, FAKE_RESULTS
+    def behaviour(base, attempt):
+        if base == "a" and attempt == 1:
+            return RuntimeError("HTTP 429 and HTML fallback failed")
+        return FAKE_RESULTS
 
-    sx._try_one = fake_try
-    pool = [{"url": "a"}, {"url": "b"}]
-    results, inst, path = sx.run_search("q", 10, parallel=1, fresh=True)
-    # monkeypatching the real fetcher is impossible offline, so feed the pool
-    # through the same code path run_search uses:
-    return inst, path, calls, sleeps
-
-
-def scenario_1_actual():
-    calls = {"a": 0, "b": 0}
-
-    def fake_try(base, query):
-        calls[base] = calls.get(base, 0) + 1
-        if base == "a" and calls["a"] == 1:
-            return base, RuntimeError("HTTP 429 and HTML fallback failed")
-        return base, FAKE_RESULTS
-
-    sx._try_one = fake_try
-    # run_search fetches its own candidate list; patch it to our pool
-    sx.fetch_instance_list = lambda fresh=False: [
-        {"url": "a", "success": 100, "median": 1, "grade": "A"},
-        {"url": "b", "success": 100, "median": 2, "grade": "A"},
-    ]
-    sx.filter_bad = lambda cands: (cands, {})
-    sx.remember_failures = lambda failures: None
-    results, inst, path = sx.run_search("q", 10, parallel=1, fresh=True)
-    return inst, path, calls
+    return scenario(behaviour, parallel=1)
 
 
 def scenario_2_endgame_win():
-    calls = {}
+    """Both instances 429 on the first pass, both recover on the retry."""
+    pool("a", "b")
 
-    def fake_try(base, query):
-        calls[base] = calls.get(base, 0) + 1
-        # a and b 429 on the first pass, recover on the retry
-        if calls[base] == 1:
-            return base, RuntimeError("HTTP 429 and HTML fallback failed")
-        return base, FAKE_RESULTS
+    def behaviour(base, attempt):
+        if attempt == 1:
+            return RuntimeError("HTTP 429 and HTML fallback failed")
+        return FAKE_RESULTS
 
-    sx._try_one = fake_try
-    sx.fetch_instance_list = lambda fresh=False: [
-        {"url": u, "success": 100, "median": 1, "grade": "A"}
-        for u in ("a", "b")
-    ]
-    sx.filter_bad = lambda cands: (cands, {})
-    sx.remember_failures = lambda failures: None
-    results, inst, path = sx.run_search("q", 10, parallel=2, fresh=True)
-    return inst, path, calls
+    return scenario(behaviour, parallel=2)
 
 
 def scenario_3_total_failure_with_fallback():
-    def fake_try(base, query):
-        if base == "a":
-            return base, RuntimeError("HTTP 403 and HTML fallback failed")
-        return base, ([{"title": "Generic", "url": "https://y.test/",
-                        "content": "", "engine": "e"}], "html")
+    """a is dead for good, b answers; the validator rejects it, we take it anyway."""
+    pool("a", "b")
 
-    sx._try_one = fake_try
-    sx.fetch_instance_list = lambda fresh=False: [
-        {"url": "a", "success": 100, "median": 1, "grade": "A"},
-        {"url": "b", "success": 100, "median": 2, "grade": "A"},
-    ]
-    sx.filter_bad = lambda cands: (cands, {})
-    sx.remember_failures = lambda failures: None
-    # validator nothing can satisfy -> fallback still returned
-    results, inst, path = sx.run_search(
-        "q", 10, parallel=2, fresh=True, validator=lambda rs: False
-    )
-    return inst, path
+    def behaviour(base, attempt):
+        if base == "a":
+            return RuntimeError("HTTP 403 and HTML fallback failed")
+        return ([{"title": "Generic", "url": "https://y.test/",
+                  "content": "", "engine": "e"}], "html")
+
+    return scenario(behaviour, parallel=2, validator=lambda rs: False)
 
 
 ok = True
+
 sleeps.clear()
-inst, path, calls = scenario_1_actual()
+inst, path, calls, _ = scenario_1_serial_retry()
 same = calls.get("a", 0) == 2 and inst == "a"
 print(f"1. serial 429-retry: winner={inst} [{path}], calls={calls}, "
       f"paused={sleeps}")
 ok &= same and len(sleeps) == 1 and sleeps[0] == 21
 
 sleeps.clear()
-inst, path, calls = scenario_2_endgame_win()
+inst, path, calls, _ = scenario_2_endgame_win()
 good = inst in ("a", "b") and len(sleeps) == 1 and sleeps[0] == 21 \
     and max(calls.values()) == 2
 print(f"2. race all-429 -> endgame retry: winner={inst} [{path}], "
@@ -123,8 +124,9 @@ print(f"2. race all-429 -> endgame retry: winner={inst} [{path}], "
 ok &= good
 
 sleeps.clear()
-inst, path = scenario_3_total_failure_with_fallback()
-print(f"3. permanent failures -> validator-unworthy fallback: winner={inst} [{path}]")
+inst, path, calls, _ = scenario_3_total_failure_with_fallback()
+print(f"3. permanent failures -> validator-unworthy fallback: winner={inst} "
+      f"[{path}], calls={calls}")
 ok &= inst == "b" and not sleeps
 
 print()

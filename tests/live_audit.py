@@ -8,7 +8,7 @@ NOTES
   - runs serially with pauses: the goal is truthful per-instance verdicts,
     not speed; parallel hammering would trip ip_limit everywhere and paint
     half the network red for an hour afterwards.
-  - per-instance failure classification mirrors main.BAD_TTLS so
+  - per-instance failure classification mirrors instances.BAD_TTLS so
     the report shows which failures are transient vs structural.
 """
 import json
@@ -17,15 +17,21 @@ import time
 from collections import Counter
 from pathlib import Path
 
+from curl_cffi import requests as cffi
+
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # project root
 
-import main as sx  # single-file build under test
-from main import (  # noqa: E402
-    TIMEOUT, UA, fetch_instance_list, filter_bad, _get,
-    is_challenge_page, has_anubis, get_anubis_cookies,
+from searxng_scraper.anubis import (  # noqa: E402
+    get_anubis_cookies, has_anubis, is_challenge_page,
+)
+from searxng_scraper.config import IMPERSONATE  # noqa: E402
+from searxng_scraper.htmlparse import parse_results_html  # noqa: E402
+from searxng_scraper.instances import (  # noqa: E402
+    TIMEOUT, UA, _get, fetch_instance_list, filter_bad,
+)
+from searxng_scraper.limiter import (  # noqa: E402
     is_portico_captcha, new_session, ping_link_token, solve_portico,
-    parse_results_html,
 )
 
 QUERY = sys.argv[1] if len(sys.argv) > 1 else "audit probe test"
@@ -75,10 +81,10 @@ def classify(base: str) -> dict:
             rec["steps"].append(f"anubis:solve-error {type(e).__name__}")
         if cookies:
             rec["steps"].append("anubis:solved")
-            s = sx.cffi.Session(impersonate=sx.IMPERSONATE)
+            s = cffi.Session(impersonate=IMPERSONATE)
             for k, v in cookies.items():
                 s.cookies.set(k, v)
-            sx.ping_link_token(s, base, timeout=TIMEOUT)
+            ping_link_token(s, base, timeout=TIMEOUT)
             rh = s.get(base + "search", params={"q": QUERY}, timeout=TIMEOUT)
             if rh.status_code == 200 and "<article" in rh.text:
                 res = parse_results_html(rh.text, base)

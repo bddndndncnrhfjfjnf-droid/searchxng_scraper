@@ -1,11 +1,12 @@
-# SearXNG meta-search — no browser, one file
+# SearXNG meta-search — no browser needed
 
 Search public SearXNG instances **without a browser, without Selenium, without
 headless**. It keeps working where the admin disabled the JSON API, where an
 Anubis or Portico captcha sits in front, or where SearXNG's rate limiter
 bites — all of it is solved on CPU.
 
-The whole tool is one file, [main.py](main.py). The only dependency is
+The engine is the [searxng_scraper/](searxng_scraper) package: one module per
+job, from the SHA-256 captcha solver to the CLI. The only dependency is
 `curl_cffi`, plus `argon2-cffi` if you happen to hit the rare argon2id
 challenge.
 
@@ -27,10 +28,10 @@ Python 3.13 or newer. No browser, no display, no headless anything.
     - [Two rules that used to break things](#two-rules-that-used-to-break-things)
 - [2. What each file is for](#2-what-each-file-is-for)
 - [3. How it works](#3-how-it-works)
-    - [How main.py is laid out](#how-mainpy-is-laid-out)
+    - [How the code is laid out](#how-the-code-is-laid-out)
 - [4. Captchas: why this works without a browser](#4-captchas-why-this-works-without-a-browser)
-    - [Anubis (Techaro) — section 4](#anubis-techaro--section-4)
-    - [Portico — section 3](#portico--section-3)
+    - [Anubis (Techaro) — `anubis.py`](#anubis-techaro--anubispy)
+    - [Portico — `limiter.py`](#portico--limiterpy)
 - [5. Where results go](#5-where-results-go)
 - [6. Use it as a library](#6-use-it-as-a-library)
     - [Handing the library to someone else](#handing-the-library-to-someone-else)
@@ -82,6 +83,22 @@ deactivate
 `python main.py --input "..."` also works from the checkout, and is what to use
 while editing the engine — the `-e` install points back at your files.
 
+## How the modules fit together
+
+Read them bottom-up. Each one only imports from the rows above it:
+
+```
+cli.py          argparse, exit codes
+api.py          search(), search_many(), SearchResult   <- the public API
+race.py         the escalation ladder, the parallel race
+  ├── anubis.py    Anubis PoW + cookie cache
+  ├── limiter.py   browser headers, link_token, Portico
+  ├── instances.py where the instance list comes from, which to skip
+  └── htmlparse.py HTML page -> the same dicts the JSON API returns
+pow.py          the shared SHA-256 solver both captchas sit on
+config.py       TLS fingerprint, timeouts, where files go, quiet flag
+```
+
 ## Every command
 
 With the environment active, the command is the same everywhere:
@@ -116,7 +133,9 @@ package is installed. Inside an activated virtualenv they don't either.
 
 | File / folder | Needed to run it? | What it does | When to open it |
 |---|---|---|---|
-| **[main.py](main.py)** | **yes, this is the program** | all of the search: instance list, race, captchas, limiter, CLI | when you need to change or understand something |
+| **[searxng_scraper/](searxng_scraper)** | **yes, this is the program** | all of the search: instance list, race, captchas, limiter, CLI | when you need to change or understand something |
+| **[main.py](main.py)** | no | thin shim so `python main.py` works | never |
+| **[searxng_search.py](searxng_search.py)** | no | thin shim, the import name from the docs | never |
 | **[pyproject.toml](pyproject.toml)** | no | dependencies and package metadata | when adding a dependency |
 | **[tests/](tests)** | no | checks: `test_*` run offline, `live_*` need the network | when you want proof you broke nothing |
 | **[README.md](README.md)** | — | this file | when you forget a command |
@@ -130,22 +149,33 @@ The full layout of a source checkout:
 
 ```
 searchxng_scraper/
-├── main.py          ← the tool itself, the only entry point
-├── searxng_search.py ← the name you import once it is pip-installed
-├── README.md        ← this file
-├── README.ru.md     ← the Russian version
-├── pyproject.toml   ← dependencies and metadata
-├── .vscode/         ← VS Code settings (git-ignored)
-├── tests/           ← checks: test_* = offline, live_* = network
+├── searxng_scraper/       ← the engine, one module per job
+│   ├── __init__.py        public API re-exports
+│   ├── api.py             search(), search_many(), SearchResult
+│   ├── cli.py             argparse, exit codes
+│   ├── race.py            the escalation ladder and the parallel race
+│   ├── instances.py       instance list, cache, "bad" bookkeeping
+│   ├── limiter.py         browser headers, link_token, Portico
+│   ├── anubis.py          Anubis PoW solver and cookie cache
+│   ├── htmlparse.py       HTML results page -> JSON-shaped dicts
+│   ├── pow.py             the shared SHA-256 proof-of-work engine
+│   └── config.py          TLS fingerprint, timeouts, paths, quiet flag
+├── main.py                ← shim: python main.py --input "..."
+├── searxng_search.py      ← shim: the documented import name
+├── README.md              ← this file
+├── README.ru.md           ← the Russian version
+├── pyproject.toml         ← dependencies and metadata
+├── .vscode/               ← VS Code settings (git-ignored)
+├── tests/                 ← checks: test_* = offline, live_* = network
 │   ├── test_pow_parser.py    offline: PoW engine, lane split, HTML parser
 │   ├── test_rotation.py      offline: instance rotation, 429 retries
 │   ├── live_anubis.py        live: only instances behind an Anubis captcha
 │   ├── live_profiles.py      live: --profiles mode
 │   └── live_audit.py         live: run every instance
-├── anubis_source/   ← Anubis reference material (git-ignored, not used at runtime)
-├── results/         ← results: nasa_cosmos.json is the query "nasa cosmos"
-├── .cache/          ← caches, safe to delete
-└── .venv/           ← the working environment
+├── anubis_source/         ← Anubis reference material (git-ignored, unused)
+├── results/               ← results: nasa_cosmos.json is the query "nasa cosmos"
+├── .cache/                ← caches, safe to delete
+└── .venv/                 ← the working environment
 ```
 
 ---
@@ -179,30 +209,34 @@ The central idea: SearXNG's limits live **on a single instance**. Forty
 instances are forty independent budgets, so exhausting all of them at once is
 not possible.
 
-## How main.py is laid out
+## How the code is laid out
 
-One file, seven sections, findable by the `SECTION n/7` headers:
+Each module does one job and only imports from the layer below it. Sizes are
+roughly proportional to how much that job actually takes:
 
-| Section | Lines | What's inside | When to go there |
+| Module | Lines | What lives there | When to go there |
 |---|---|---|---|
-| 1 | 127–432 | SHA-256 proof-of-work engine, multi-core | changing captcha speed or difficulty |
-| 2 | 433–540 | stdlib parser for SearXNG HTML result pages | an instance changed its markup |
-| 3 | 541–647 | limiter: browser headers, link_token, Portico | debugging 429/302 |
-| 4 | 648–975 | Anubis solver + cookie cache | debugging the Anubis captcha |
-| 5 | 976–1578 | instance list, the race, `--pdf` / `--profiles` | changing search logic |
-| 6 | 1579–1795 | **public API**: `search()`, `SearchResult`, `search_many()`, `search_async()` | writing your own code on top |
-| 7 | 1798–end | CLI, flags, result filename | changing flags or the output folder |
+| [config.py](searxng_scraper/config.py) | 78 | TLS fingerprint, timeouts, where files go, quiet flag | changing anything global |
+| [pow.py](searxng_scraper/pow.py) | 322 | SHA-256 proof-of-work engine, multi-core | captcha speed or difficulty |
+| [htmlparse.py](searxng_scraper/htmlparse.py) | 119 | HTML results page → JSON-shaped dicts | an instance changed its markup |
+| [limiter.py](searxng_scraper/limiter.py) | 124 | browser headers, link_token ping, Portico | debugging 429/302 |
+| [anubis.py](searxng_scraper/anubis.py) | 352 | Anubis PoW solver + cookie cache | debugging the Anubis captcha |
+| [instances.py](searxng_scraper/instances.py) | 152 | where the instance list comes from, which to skip | "why did it skip everything" |
+| [race.py](searxng_scraper/race.py) | 503 | the escalation ladder and the parallel race | changing search logic |
+| [api.py](searxng_scraper/api.py) | 240 | **the public API**: `search()`, `SearchResult`, … | writing your own code on top |
+| [cli.py](searxng_scraper/cli.py) | 77 | flags, stdout, exit codes | adding a flag |
 
 The knobs people actually turn:
 
 | What to change | Where |
 |---|---|
-| User-Agent | [main.py:995](main.py#L995) (`UA`) |
-| Browser TLS fingerprint | [main.py:72](main.py#L72) (`IMPERSONATE`) |
-| How many instances to try | [main.py:993](main.py#L993) (`MAX_INSTANCES_TO_TRY`) |
-| Request timeout | [main.py:994](main.py#L994) (`TIMEOUT`) |
-| How long to remember a "bad" instance | [main.py:1003](main.py#L1003) (`BAD_TTLS`) |
-| Results folder | [main.py:1582](main.py#L1582) (`RESULTS_DIR`) |
+| Browser TLS fingerprint | [config.py:16](searxng_scraper/config.py#L16) (`IMPERSONATE`) |
+| User-Agent | [instances.py:36](searxng_scraper/instances.py#L36) (`UA`) |
+| How many instances to try | [instances.py:34](searxng_scraper/instances.py#L34) (`MAX_INSTANCES_TO_TRY`) |
+| Request timeout | [instances.py:35](searxng_scraper/instances.py#L35) (`TIMEOUT`) |
+| How long to remember a "bad" instance | [instances.py:44](searxng_scraper/instances.py#L44) (`BAD_TTLS`) |
+| Where the instance list comes from | [instances.py:33](searxng_scraper/instances.py#L33) (`INSTANCES_URL`) |
+| Results folder | [api.py:27](searxng_scraper/api.py#L27) (`RESULTS_DIR`) |
 
 ---
 
@@ -210,17 +244,17 @@ The knobs people actually turn:
 
 A browser solves captchas with JavaScript. This does the same thing, on CPU:
 
-| What the browser does | What main.py does |
+| What the browser does | What this package does |
 |---|---|
 | request with Chrome's TLS fingerprint | `curl_cffi impersonate=chrome131` |
-| sends Accept / Sec-Fetch / Accept-Language | the same headers, set by hand (section 3) |
+| sends Accept / Sec-Fetch / Accept-Language | the same headers, set by hand in `limiter.py` |
 | pulls in the random CSS `/client<token>.css` | `ping_link_token()` — finds the link and fetches it |
 | stores cookies | `curl_cffi.Session` with its own cookie jar |
-| JS worker computes SHA-256 for Anubis | the same SHA-256 across all cores (sections 1 and 4) |
+| JS worker computes SHA-256 for Anubis | the same SHA-256 across all cores (`pow.py`) |
 | JS computes the Portico PoW | same engine, different nonce packing |
 | navigates between pages | one HTTP request plus an HTML parse |
 
-## Anubis (Techaro) — section 4
+## Anubis (Techaro) — `anubis.py`
 
 The stub page carries the challenge right in the HTML:
 
@@ -254,12 +288,12 @@ Things that cost real debugging time:
 Anubis' own sources were captured locally to verify the hashing convention above.
 They are git-ignored and not shipped: nothing in `anubis_source/` runs.
 
-## Portico — section 3
+## Portico — `limiter.py`
 
 SearXNG's native captcha: `SHA256(seed + "\0" + counter)` must produce `pow_bits`
 leading zero **bits**, where the seed is `payload`, `signature`, `nonce` and the
 User-Agent glued together with `\0`. The finished answer is POSTed to `/portico`
-as `captcha_js_proof="<counter>:<hexdigest>"` — same engine as section 1.
+as `captcha_js_proof="<counter>:<hexdigest>"` — same engine as in `pow.py`.
 
 ---
 
@@ -286,7 +320,7 @@ Every query gets **its own readable file in `results/`**:
 
 # 6. Use it as a library
 
-[main.py](main.py) is a real library, not just a script.
+`searchxng_scraper` is a real library, not just a script.
 
 ## Handing the library to someone else
 
@@ -322,15 +356,18 @@ Dependencies come along automatically (`curl_cffi` + `argon2-cffi`); all that's
 needed is Python 3.13+.
 
 If installing is impossible — someone else's machine, no pip, a read-only disk —
-copying still works, because there is only one file:
+copying still works. Copy the `searxng_scraper/` folder next to your code and
+import it; it has no compiled parts and imports nothing outside the stdlib plus
+`curl_cffi`:
 
 ```python
-# 1. copy main.py to your project as sxng.py and import it:
-import sxng
+# 1. copy the searxng_scraper/ folder next to your project, then:
+import searxng_scraper as sxng
+r = sxng.search("nasa cosmos", limit=5)
 
-# 2. or point at the folder holding the engine (the whole API works here too):
+# 2. or point at the folder holding the checkout (the whole API works here too):
 import sys; sys.path.append(r"C:\Users\PC\Desktop\searchxng_scraper")
-import main as sxng
+import searxng_scraper as sxng
 ```
 
 ## Where an installed library writes files
@@ -403,8 +440,18 @@ for r in sxng.search_many(["climate report", "nato members"], on_result=show):
     r.save()          # each one gets its own file in results/
 ```
 
-If a generic `main.py` in your project would collide, rename the file when you
-copy it (`sxng.py`) — no module name is hardcoded anywhere inside.
+Working straight from a checkout without installing? `main.py` is there for
+exactly that:
+
+```python
+import sys; sys.path.append(r"C:\Users\PC\Desktop\searchxng_scraper")
+from main import search, execute, SearchResult
+```
+
+`main.py` only re-exports the package, so both import styles behave identically.
+If a generic `main.py` in your project would collide, import
+[searxng_scraper](searxng_scraper) directly instead — its name is namespaced and
+nothing inside the engine hardcodes either name.
 
 ---
 
@@ -553,8 +600,8 @@ python -m venv .venv
 .venv/bin/pip install argon2-cffi      # optional: argon2id challenges
 ```
 
-Python 3.13 or newer. Nothing else needs installing: [main.py](main.py) is
-self-contained — copy it to any machine and run it.
+Python 3.13 or newer. Nothing else needs installing: [searxng_scraper/](searxng_scraper)
+is pure Python — copy the folder to any machine and run it.
 
 ## Licence
 
