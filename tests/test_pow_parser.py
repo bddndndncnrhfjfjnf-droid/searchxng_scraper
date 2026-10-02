@@ -1,6 +1,6 @@
 """Self-test + benchmark for the PoW solver and HTML parser.
 
-Run:  .venv-lite/Scripts/python tests/test_pow_parser.py
+Run:  python tests/test_pow_parser.py
 
 Everything under test lives in main.py (single-file build).
 All offline - no network. Checks:

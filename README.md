@@ -16,15 +16,15 @@ sxng --input "nasa cosmos"
 
 Python 3.13 or newer. No browser, no display, no headless anything.
 
+**Language:** **English** · [Русский](README.ru.md)
+
 ---
 
 ## Contents
 
 - [1. Run it](#1-run-it)
-    - [Two ways to run it](#two-ways-to-run-it)
     - [Every command](#every-command)
     - [Two rules that used to break things](#two-rules-that-used-to-break-things)
-    - [From source, without the PowerShell wrapper](#from-source-without-the-powershell-wrapper)
 - [2. What each file is for](#2-what-each-file-is-for)
 - [3. How it works](#3-how-it-works)
     - [How main.py is laid out](#how-mainpy-is-laid-out)
@@ -46,6 +46,7 @@ Python 3.13 or newer. No browser, no display, no headless anything.
         - [What actually works, and is implemented here](#what-actually-works-and-is-implemented-here)
     - [What lives in the caches](#what-lives-in-the-caches)
     - [Installing from scratch](#installing-from-scratch)
+    - [Licence](#licence)
 
 ---
 
@@ -54,50 +55,49 @@ Python 3.13 or newer. No browser, no display, no headless anything.
 If you installed it from PyPI, the command is already on your PATH:
 
 ```bash
+pip install searchxng_scraper
 sxng --input "nasa cosmos"
 ```
 
-That takes one to four seconds and writes `results/nasa_cosmos.json`. On
-Windows the same thing from PowerShell is:
+That takes one to four seconds and writes `results/nasa_cosmos.json`.
+
+If you cloned this repository instead, set the environment up once — the `-e`
+flag installs the checkout in editable mode and drops `sxng` on PATH, so no
+paths ever need typing again:
+
+```bash
+python -m venv .venv
+.venv/Scripts/pip install -e .        # Windows
+.venv/bin/pip install -e .            # macOS / Linux
+```
+
+Then activate it per terminal:
 
 ```powershell
+.venv\Scripts\Activate.ps1     # (.venv) appears at the prompt
 sxng --input "nasa cosmos"
+deactivate
 ```
 
-## Two ways to run it
-
-There are two supported setups, and they have different entry points.
-
-| | Installed from PyPI | Run from a source checkout |
-|---|---|---|
-| Command | `sxng --input "query"` | `python main.py --input "query"` |
-| Import name | `searxng_search` | `main` (or rename it and import `sxng`) |
-| Needs a checkout | no | yes |
-| Good for | everyone else | hacking on the engine |
-
-Everything below that mentions `main.py` refers to the source checkout. If you
-came here from `pip install`, use `sxng` and `searxng_search` instead —
-everything else is identical.
+`python main.py --input "..."` also works from the checkout, and is what to use
+while editing the engine — the `-e` install points back at your files.
 
 ## Every command
 
-Run from a source checkout, PowerShell:
+With the environment active, the command is the same everywhere:
 
 | Command | What it does |
 |---|---|
-| `.\run.ps1 "what to search"` | normal search, 10 results |
-| `.\run.ps1 "what to search" -n 20` | 20 results instead of 10 |
-| `.\run.ps1 "what to search" -v` | **verbose log**: every instance tried, where a captcha got solved, who won the race |
-| `.\run.ps1 "nato plan 2022" --pdf` | PDF documents only |
-| `.\run.ps1 "nato staff" --profiles` | people profiles (LinkedIn `/in/`) |
-| `.\run.ps1` | the cheat sheet |
-| `.\run.ps1 test` | offline checks (~1 minute, no network) |
-| `.\run.ps1 audit` | live audit of every instance → `results/audit_report.json` |
-| `.\run.ps1 anubis "query"` | live demo of instances behind an Anubis captcha |
-
-`run.ps1` is a thin wrapper around `.venv-lite\Scripts\python.exe`, falling back
-to whatever `python` is on PATH. Its only job is saving you from typing the full
-interpreter path.
+| `sxng --input "what to search"` | normal search, 10 results |
+| `sxng --input "what to search" -n 20` | 20 results instead of 10 |
+| `sxng --input "what to search" -v` | **verbose log**: every instance tried, where a captcha got solved, who won the race |
+| `sxng --input "nato plan 2022" --pdf` | PDF documents only |
+| `sxng --input "nato staff" --profiles` | people profiles (LinkedIn `/in/`) |
+| `sxng` | the cheat sheet |
+| `python tests/test_pow_parser.py` | offline engine checks (~1 minute, no network) |
+| `python tests/test_rotation.py` | offline rotation checks |
+| `python tests/live_audit.py` | live audit of every instance → `results/audit_report.json` |
+| `python tests/live_anubis.py "query"` | live demo of instances behind an Anubis captcha |
 
 ## Two rules that used to break things
 
@@ -105,26 +105,10 @@ interpreter path.
    as a separate argument: `--input nasa cosmos` → `unrecognized arguments: cosmos`.
 2. **`&` is PowerShell's background operator, not part of a path.** A command
    like `...python.exe c:/Users/PC/Desk& c:/...` gets cut in half, which is where
-   `unrecognized arguments: scrape` came from. `run.ps1` sidesteps this entirely.
+   `unrecognized arguments: scrape` came from.
 
-Neither applies to `pip install searchxng_scraper` — the console script is a real
-`.exe` shim, so both problems disappear.
-
-## From source, without the PowerShell wrapper
-
-```bash
-python main.py --input "nasa cosmos"          # picks up the venv, then system Python
-.venv-lite/Scripts/python.exe main.py --input "nasa cosmos"   # be explicit
-.venv-lite/Scripts/python.exe main.py          # no arguments = the cheat sheet
-```
-
-To make `python` mean the project environment for the life of a terminal:
-
-```bash
-source .venv-lite/bin/activate      # (.venv-lite) appears at the prompt
-python main.py --input "nasa cosmos"
-deactivate
-```
+`pip install` gets you a real `.exe` shim, so neither problem exists once the
+package is installed. Inside an activated virtualenv they don't either.
 
 ---
 
@@ -133,15 +117,14 @@ deactivate
 | File / folder | Needed to run it? | What it does | When to open it |
 |---|---|---|---|
 | **[main.py](main.py)** | **yes, this is the program** | all of the search: instance list, race, captchas, limiter, CLI | when you need to change or understand something |
-| **[run.ps1](run.ps1)** | convenient, not required | short commands instead of a long interpreter path | never, just run it |
 | **[pyproject.toml](pyproject.toml)** | no | dependencies and package metadata | when adding a dependency |
 | **[tests/](tests)** | no | checks: `test_*` run offline, `live_*` need the network | when you want proof you broke nothing |
-| **[anubis_source/](anubis_source)** | no | captured Anubis captcha JavaScript, kept as a reference | when working on the captcha code |
 | **[README.md](README.md)** | — | this file | when you forget a command |
 | `results/` | — | one file per query | when reading results |
 | `.cache/` | — | instance list and Anubis cookies | never; safe to delete |
-| `.venv-lite/` | for source checkouts | the Python interpreter with dependencies | never |
-| `.vscode/` | — | editor settings | never |
+| `.venv/` | for source checkouts | the Python interpreter with dependencies | never |
+| `.vscode/` | — | editor settings, local only | never |
+| `anubis_source/` | no | captured Anubis challenge JavaScript, git-ignored | when working on the captcha code |
 
 The full layout of a source checkout:
 
@@ -149,8 +132,8 @@ The full layout of a source checkout:
 searchxng_scraper/
 ├── main.py          ← the tool itself, the only entry point
 ├── searxng_search.py ← the name you import once it is pip-installed
-├── run.ps1          ← short launch commands
 ├── README.md        ← this file
+├── README.ru.md     ← the Russian version
 ├── pyproject.toml   ← dependencies and metadata
 ├── .vscode/         ← VS Code settings (git-ignored)
 ├── tests/           ← checks: test_* = offline, live_* = network
@@ -159,10 +142,10 @@ searchxng_scraper/
 │   ├── live_anubis.py        live: only instances behind an Anubis captcha
 │   ├── live_profiles.py      live: --profiles mode
 │   └── live_audit.py         live: run every instance
-├── anubis_source/   ← Anubis reference material, not used at runtime
+├── anubis_source/   ← Anubis reference material (git-ignored, not used at runtime)
 ├── results/         ← results: nasa_cosmos.json is the query "nasa cosmos"
 ├── .cache/          ← caches, safe to delete
-└── .venv-lite/      ← the working environment (.venv and .venv-scrape are stale)
+└── .venv/           ← the working environment
 ```
 
 ---
@@ -268,8 +251,8 @@ Things that cost real debugging time:
 * cookies are cached until the JWT expires (usually ~1 hour); if the server
   rejects one, it is dropped and the captcha is solved again within the same run.
 
-Anubis' own sources are in [anubis_source/](anubis_source): that's where the
-hashing convention was verified against.
+Anubis' own sources were captured locally to verify the hashing convention above.
+They are git-ignored and not shipped: nothing in `anubis_source/` runs.
 
 ## Portico — section 3
 
@@ -482,15 +465,16 @@ out = sx.execute("nasa", limit=10, mode="web", parallel=10, fresh=False)
 | `unrecognized arguments: ...` | you forgot the quotes around a multi-word query |
 | "Anubis solved but limiter still blocks search" | that instance flagged your IP; wait ~10 minutes and it drops out of the bad-instance cache |
 | Anubis cookies expired | they re-solve themselves: the server returned the stub, old cookies are dropped, the captcha is computed again |
-| one instance suddenly returns nothing | the HTML path depends on SearXNG's theme skeleton (`article.result`). Check offline with `.\run.ps1 test` |
-| it broke after you edited the code | `.\run.ps1 test` — the offline tests must pass |
+| one instance suddenly returns nothing | the HTML path depends on SearXNG's theme skeleton (`article.result`). Check offline with `python tests/test_pow_parser.py` |
+| it broke after you edited the code | run the two offline test scripts below — both must pass |
 
 The check scripts:
 
-```powershell
-.\run.ps1 test              # test_pow_parser.py + test_rotation.py, no network
-.\run.ps1 audit             # live run over every instance
-.\run.ps1 anubis "query"    # live demo of captcha-gated instances
+```bash
+python tests/test_pow_parser.py      # PoW engine, lane split, HTML parser, no network
+python tests/test_rotation.py        # instance rotation and 429 retries, no network
+python tests/live_audit.py           # live run over every instance
+python tests/live_anubis.py "query"  # live demo of captcha-gated instances
 ```
 
 ---
@@ -564,9 +548,9 @@ skips the "bad" ones meanwhile.
 ## Installing from scratch
 
 ```bash
-python -m venv .venv-lite
-.venv-lite/Scripts/pip install curl_cffi          # required
-.venv-lite/Scripts/pip install argon2-cffi        # optional: argon2id challenges
+python -m venv .venv
+.venv/bin/pip install -e .             # installs the checkout + curl_cffi
+.venv/bin/pip install argon2-cffi      # optional: argon2id challenges
 ```
 
 Python 3.13 or newer. Nothing else needs installing: [main.py](main.py) is

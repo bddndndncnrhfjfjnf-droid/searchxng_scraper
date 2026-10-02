@@ -15,6 +15,10 @@ wheels/
 results/
 .cache/
 
+# Captured Anubis challenge JavaScript. Reference material only: the hashing
+# convention was verified against it, but nothing here runs or ships.
+anubis_source/
+
 # Config folders of unrelated tools that happen to live in this directory
 .agents/
 .claude/

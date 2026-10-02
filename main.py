@@ -1591,14 +1591,14 @@ SearXNG meta-search, no browser. A short cheat sheet:
     sxng --input "nato staff" --pdf        PDF-only mode
     sxng                                 this cheat sheet
 
-  From a source checkout (PowerShell):
-    .\\run.ps1 "nasa cosmos"               -> results\\nasa_cosmos.json
-    .\\run.ps1 "nato staff" --pdf         PDF-only mode
-    .venv-lite\\Scripts\\python.exe main.py --input "nasa cosmos" -n 10
+  From a source checkout (after `pip install -e .` and activating the venv):
+    sxng --input "nato staff" --pdf      PDF-only mode
+    python main.py --input "nasa cosmos" -n 10
 
-  Checks (tests\\, test_* need no network):
-    .\\run.ps1 test                       offline engine and rotation tests
-    .\\run.ps1 audit                      live audit of every instance
+  Checks (test_* need no network):
+    python tests/test_pow_parser.py       offline engine checks
+    python tests/test_rotation.py         offline rotation checks
+    python tests/live_audit.py            live audit of every instance
 
   Details on the captchas, the limiter and the project layout: README.md
 """

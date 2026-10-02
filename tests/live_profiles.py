@@ -1,6 +1,6 @@
 """NATO profile search: iterate query shapes until LinkedIn hits appear.
 
-Run:  .venv-lite/Scripts/python tests/live_profiles.py
+Run:  python tests/live_profiles.py
 """
 import json
 import sys

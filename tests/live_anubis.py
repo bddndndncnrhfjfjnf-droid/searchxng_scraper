@@ -10,7 +10,7 @@ the bad-instance cache - the demo never pollutes the rotation state.
 Transient limiter cooldowns get one 21s wait + retry (cookie reused from
 cache), one-off network timeouts get an immediate retry.
 
-Run:  .venv-lite/Scripts/python tests/live_anubis.py ["query"]
+Run:  python tests/live_anubis.py ["query"]
 """
 from __future__ import annotations
 

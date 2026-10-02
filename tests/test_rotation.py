@@ -7,7 +7,7 @@
   3. parallel race: all failures permanent -> stage B falls back to a
      validator-unworthy set -> error only if literally nothing arrived.
 
-Run:  .venv-lite/Scripts/python tests/test_rotation.py
+Run:  python tests/test_rotation.py
 """
 import sys
 import time

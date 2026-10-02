@@ -1,7 +1,7 @@
 """Audit sweep: try the full escalation ladder on every usable instance,
 record per-instance outcomes and timings, and summarise weak spots.
 
-Run:  .venv-lite/Scripts/python tests/live_audit.py [query]
+Run:  python tests/live_audit.py [query]
 Writes: results/audit_report.json + prints a human-readable summary.
 
 NOTES
