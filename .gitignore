@@ -1,0 +1,26 @@
+# Python build artefacts
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments (three live here; none belong in git)
+.venv
+.venv-lite
+.venv-scrape
+
+# Runtime output + caches - regenerate at any time
+results/
+.cache/
+
+# Config folders of unrelated tools that happen to live in this directory
+.agents/
+.claude/
+.qodo/
+.freebuff/
+.vscode/
+skills-lock.json
+uv.lock
+.python-version

@@ -1,0 +1,47 @@
+[project]
+name = "searxng-search"
+version = "0.2.0"
+description = "Browserless SearXNG meta-search: importable library + CLI in one file (solves Anubis/Portico proof-of-work challenges on CPU)"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.13"
+authors = [{ name = "badmintonthegoldrush", email = "laaoala7@gmail.com" }]
+keywords = [
+    "searxng",
+    "metasearch",
+    "search",
+    "scraper",
+    "anubis",
+    "portico",
+    "proof-of-work",
+    "bot-detection",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "curl_cffi>=0.16",
+    "argon2-cffi>=25.1",  # only for the rare argon2id Anubis challenge
+]
+
+# Installed console script: sxng --input "nasa cosmos"
+[project.scripts]
+sxng = "main:main"
+
+# Two top-level modules: searxng_search (the public import name) and main
+# (the engine plus the CLI). No packages with __init__.py involved.
+[tool.setuptools]
+py-modules = ["searxng_search", "main"]
+packages = []
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
