@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.13"
-authors = [{ name = "badmintonthegoldrush", email = "laaoala7@gmail.com" }]
+authors = [{ name = "badmintonthegoldrush" }]
 keywords = [
     "searxng",
     "metasearch",
