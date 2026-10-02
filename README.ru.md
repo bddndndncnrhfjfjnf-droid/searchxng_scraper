@@ -18,18 +18,7 @@ pip install searchxng_scraper
 sxng --input "nasa cosmos"
 ```
 
-**Termux / Android:**
-
-```bash
-pkg upgrade python-curl-cffi     # сборка Termux должна совпадать с твоим Python
-pip install searchxng_scraper
-sxng --input "nasa cosmos"
-```
-
-Если `sxng` падает с `dlopen failed: library "libpython3.X.so" not found`, значит
-`curl_cffi` в Termux собран под другой версией Python. Лечится
-`pkg upgrade python-curl-cffi`, запасной вариант —
-`pip install --force-reinstall curl_cffi`.
+**Termux / Android:** см. раздел [Установка на Termux](#установка-на-termux).
 
 Опционально, только если попадётся редкая argon2id-капча:
 
@@ -156,6 +145,89 @@ PowerShell отдаст второе слово отдельным аргуме�
 
 По файлу на запрос в `results/`, имя — сам запрос, существующий файл никогда не
 перезаписывается (повтор получает `_2`, `_3`). Папку можно удалять целиком.
+
+## Установка на Termux
+
+Android требует одного лишнего шага, которого нет на десктопе, поэтому у него
+отдельный раздел.
+
+**0. Правильный Termux.** Ставь из **F-Droid** (`com.termux`), а не из Play
+Store: сборка из Play Store неподдерживаемая, старше NDK и вообще не умеет
+запускать нативные расширения, поэтому `curl_cffi` там загрузиться не может
+никак.
+
+**1. Python из Termux, а не из F-Droid:**
+
+```bash
+pkg install python
+python -V          # ожидаем 3.13 или новее
+```
+
+**2. Сначала почини `curl_cffi`.** Именно этот шаг и кусается, а ошибка
+ничего не говорит о причине:
+
+```
+ImportError: dlopen failed: library "libpython3.13.so" not found:
+needed by .../curl_cffi/_wrapper.abi3.so in namespace (default)
+```
+
+`curl_cffi` приезжает с готовым бинарником. Termux собирает его под тот Python,
+который был актуален на момент сборки пакета; как только сам Termux обновляет
+Python, пакет остаётся позади и указывает на несуществующий `libpython`.
+Лечится так:
+
+```bash
+pkg upgrade python-curl-cffi
+```
+
+Если пересобранного пакета у Termux ещё нет, компилируем под свой интерпретатор
+— один раз, нужен тулчейн:
+
+```bash
+pkg install clang libffi make pkg-config
+pip install --force-reinstall curl_cffi
+```
+
+Проверь до того, как идти дальше: импортом бинарника проверяется именно он:
+
+```bash
+python -c "from curl_cffi import requests; print('curl_cffi OK')"
+```
+
+**3. Установка и запуск:**
+
+```bash
+pip install searchxng_scraper
+sxng --input "nasa cosmos"
+```
+
+Если `pip` ругается «externally managed environment», добавь
+`--break-system-packages` (либо поставь в venv:
+`python -m venv .venv && .venv/bin/pip install searchxng_scraper`).
+
+### Куда ложатся файлы на Android
+
+`results/` создаётся рядом с пакетом, а на Termux это значит внутрь
+`site-packages`. Работает, но искать неудобно, поэтому передавай свой путь или
+просто запускай из домашней директории:
+
+```bash
+sxng --input "nasa cosmos" -o ~/nasa.json
+```
+
+Фоновая проверка обновлений использует `urllib` из стандартной библиотеки, а не
+`curl_cffi`, так что дополнительной настройки не требует и сломаться так же не
+может.
+
+### Если на Termux что-то не работает
+
+| Симптом | Что делать |
+|---|---|
+| `dlopen failed: library "libpython3.X.so" not found` | `pkg upgrade python-curl-cffi`, либо пересборка выше |
+| `curl_cffi` собрался, но падает на импорте | пакет собран под другим Python; переустанови после `pkg upgrade python` |
+| `externally managed environment` | добавь `--break-system-packages` или используй venv |
+| Play Store Termux, не работает ничего | удали и поставь сборку из F-Droid |
+| первый поиск медленный | солвер PoW использует все ядра, это нормально; дальше результаты кэшируются |
 
 ## Проверки
 
