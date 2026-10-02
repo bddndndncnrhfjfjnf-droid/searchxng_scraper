@@ -32,6 +32,10 @@ dependencies = [
     "argon2-cffi>=25.1",  # only for the rare argon2id Anubis challenge
 ]
 
+[project.urls]
+Repository = "https://github.com/bddndndncnrhfjfjnf-droid/searchxng_scraper"
+Issues = "https://github.com/bddndndncnrhfjfjnf-droid/searchxng_scraper/issues"
+
 # Installed console script: sxng --input "nasa cosmos"
 [project.scripts]
 sxng = "main:main"
