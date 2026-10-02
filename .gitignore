@@ -13,6 +13,7 @@ wheels/
 
 # Runtime output + caches - regenerate at any time
 results/
+SearchXNG_report/
 .cache/
 
 # Captured Anubis challenge JavaScript. Reference material only: the hashing
