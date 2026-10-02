@@ -14,7 +14,7 @@ import threading
 import time
 from concurrent.futures import ProcessPoolExecutor
 
-# SECTION 1/7: pow_solver - shared SHA-256 proof-of-work engine
+# pow.py - the shared SHA-256 proof-of-work engine (Anubis and Portico)
 # ===========================================================================
 """Fast shared SHA-256 proof-of-work solver (Anubis + Portico challenges).
 

@@ -11,7 +11,7 @@ from .config import QUIET
 from .api import QUICK_START, results_path
 from .race import execute, print_results
 
-# SECTION 7/7: CLI
+# cli.py - flags, stdout, exit codes
 # ===========================================================================
 
 def main() -> int:
@@ -24,7 +24,7 @@ def main() -> int:
         return 0
 
     ap = argparse.ArgumentParser(
-        description="Browserless SearXNG meta-search, single file (JSON optional)"
+        description="Browserless SearXNG meta-search (JSON optional)"
     )
     ap.add_argument("--input", required=True,
                     help="search query (quote multi-word queries: "

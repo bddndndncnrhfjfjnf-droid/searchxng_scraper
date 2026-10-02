@@ -15,7 +15,7 @@ from curl_cffi import requests as cffi
 from .config import IMPERSONATE
 from .pow import solve
 
-# SECTION 3/7: searxng_limiter - botdetection / link_token / Portico helpers
+# limiter.py - botdetection / link_token / Portico helpers
 # ===========================================================================
 """Browserless helpers for SearXNG instances fronted by the stock `limiter` plugin.
 

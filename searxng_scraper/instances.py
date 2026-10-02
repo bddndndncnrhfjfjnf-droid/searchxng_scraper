@@ -14,7 +14,7 @@ from curl_cffi import requests as cffi
 
 from .config import IMPERSONATE, data_dir
 
-# SECTION 5/7: searxng_search - instance list, rotation race, escalation
+# instances.py - where the instance list comes from, and which ones to skip
 # ===========================================================================
 """SearXNG meta-search without a browser - fast and light.
 

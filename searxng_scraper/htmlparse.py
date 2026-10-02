@@ -9,7 +9,7 @@ from __future__ import annotations
 from html.parser import HTMLParser
 from urllib.parse import urljoin
 
-# SECTION 2/7: sxng_html - stdlib parser for SearXNG HTML result pages
+# htmlparse.py - stdlib parser for SearXNG HTML result pages
 # ===========================================================================
 """Stdlib-only parser for SearXNG HTML result pages (simple/oscar themes).
 

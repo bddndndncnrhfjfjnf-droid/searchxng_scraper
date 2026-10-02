@@ -19,7 +19,7 @@ from curl_cffi import requests as cffi
 from .config import IMPERSONATE, data_dir, has_argon2, qprint
 from .pow import leading_zero_bits, solve
 
-# SECTION 4/7: anubis_solver - Anubis (Techaro) PoW challenge solver
+# anubis.py - Anubis (Techaro) PoW challenge solver
 # ===========================================================================
 """Browserless Anubis (Techaro) proof-of-work challenge solver.
 
@@ -44,7 +44,7 @@ Requirements that took live debugging to figure out:
   * The verification cookie may be marked Partitioned/Secure; the session jar
     handles it fine as long as it is reused across the two requests.
 
-Performance: the PoW itself is delegated to solve() (SECTION 1), which hashes
+Performance: the PoW itself is delegated to solve() in pow.py, which hashes
 on all CPU cores. Legacy "fast"/"slow" challenges (ASCII nonce suffix) and
 WASM-era "sha256" challenges (fixed-width nonce bytes) both go through it;
 argon2id stays a single-threaded loop because it is memory-hard (19 MiB per
@@ -81,7 +81,7 @@ def _solve_pow(random_data: str, difficulty: int) -> tuple[str, int]:
     leading zero HEX chars (= 4*difficulty leading zero bits).
 
     Mirrors Anubis's worker/sha256-*.mjs loop; runs on all CPU cores via
-    solve() (SECTION 1)."""
+    solve() in pow.py."""
     digest, nonce = solve(
         random_data.encode(), difficulty * 4, max_seconds=60.0
     )

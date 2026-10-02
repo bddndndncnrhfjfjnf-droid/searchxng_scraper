@@ -21,7 +21,7 @@ from .config import QUIET, data_dir
 from .instances import _load_state, _save_state, fetch_instance_list
 from .race import execute
 
-# SECTION 6/7: public API - import this from your own projects
+# api.py - the public API: import this from your own projects
 # ===========================================================================
 
 RESULTS_DIR = data_dir("results")

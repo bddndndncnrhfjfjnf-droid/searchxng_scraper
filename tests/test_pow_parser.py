@@ -2,10 +2,10 @@
 
 Run:  python tests/test_pow_parser.py
 
-Everything under test lives in main.py (single-file build).
-All offline - no network. Checks:
+Everything under test lives in the searxng_scraper package (pow.py and
+htmlparse.py). All offline - no network. Checks:
   1. leading_zero_bits <-> threshold comparison equivalence
-  2. main.solve() reproduces the exact hash conventions:
+  2. pow.solve() reproduces the exact hash conventions:
        - suffix="decimal": SHA256(base + str(nonce))   (Anubis fast/slow, Portico)
        - suffix="int":     SHA256(base + nonce_bytes)  (Anubis WASM sha256),
          both big- and little-endian
@@ -13,7 +13,7 @@ All offline - no network. Checks:
      parity with the live-validated single-thread loop on the inline path
   4. lane partition covers every nonce (no gaps/overlaps) for all pool sizes
   5. benchmark: single-core vs multi-core on a realistic challenge
-  6. main.parse_results_html() on SearXNG-shaped fixtures (simple theme),
+  6. htmlparse.parse_results_html() on SearXNG-shaped fixtures (simple theme),
      nested tags, relative hrefs, image-article filtering
 """
 
