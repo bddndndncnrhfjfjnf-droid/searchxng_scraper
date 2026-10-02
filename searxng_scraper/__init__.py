@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING
 # so this one stays eager.
 from .config import quiet, set_verbose
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 # Imported as a library, not run as a script: keep stdout clean so the host
 # program owns it. set_verbose(True) brings the race log back.

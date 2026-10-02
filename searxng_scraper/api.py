@@ -23,7 +23,7 @@ from .race import execute
 # api.py - the public API: import this from your own projects
 # ===========================================================================
 
-RESULTS_DIR = data_dir("results")
+RESULTS_DIR = data_dir("SearchXNG_report")
 SLUG_MAX = 60
 
 # The cheat sheet printed by a bare `sxng` lives in cli.py, next to the flags it
@@ -68,7 +68,7 @@ class SearchResult:
         result.urls, result.titles, result.snippets
         result.anubis          # True if the winner was behind Anubis
         result.to_json()
-        result.save()          # results/<slug>.json next to the engine
+        result.save()          # SearchXNG_report/<slug>.json
     """
 
     query: str

@@ -14,6 +14,7 @@ Several instances race in parallel; the first one with results wins.
 from __future__ import annotations
 
 import queue
+import sys
 import threading
 import time
 
@@ -493,9 +494,38 @@ def execute(
     }
 
 
-def print_results(out: dict) -> None:
-    """Human-friendly console rendering of an execute() envelope."""
-    print(f"\n[query] {out['query']!r} via {out['instance']} "
-          f"[{out['path']}] in {out['elapsed_s']}s\n")
-    for i, r in enumerate(out["results"], 1):
-        print(f"{i:>2}. {r['title']}\n    {r['url']}\n    {r['snippet'][:120]}\n")
+def print_results(out: dict, saved_to=None) -> None:
+    """Human-friendly console rendering of an execute() envelope.
+
+    Colour is used only when stdout is a terminal, so piping this into a file
+    gives clean text. This is what `sxng` prints by default now; the JSON stays
+    available for machines via `-o -`, `--json`, or a redirect.
+    """
+    tty = sys.stdout.isatty()
+    dim = "\033[2m" if tty else ""
+    bold = "\033[1m" if tty else ""
+    cyan = "\033[36m" if tty else ""
+    reset = "\033[0m" if tty else ""
+
+    hits = out["results"]
+    print()
+    print(f"{bold}{out['query']}{reset}  {dim}{len(hits)} results via "
+          f"{out['instance']} [{out['path']}] in {out['elapsed_s']}s{reset}")
+    if saved_to:
+        print(f"{dim}saved to {saved_to}{reset}")
+    if not hits:
+        print(f"\n{dim}no results; try --fresh, or fewer filters{reset}\n")
+        return
+
+    for i, r in enumerate(hits, 1):
+        title = r["title"] or r["url"]
+        print(f"\n{cyan}{i:>2}.{reset} {bold}{title}{reset}")
+        print(f"    {cyan}{r['url']}{reset}")
+        snippet = " ".join((r["snippet"] or "").split())
+        if snippet:
+            if len(snippet) > 160:
+                snippet = snippet[:157].rstrip() + "..."
+            print(f"    {dim}{snippet}{reset}")
+        if r.get("engine"):
+            print(f"    {dim}via {r['engine']}{reset}")
+    print()

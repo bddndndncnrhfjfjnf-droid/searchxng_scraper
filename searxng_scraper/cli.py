@@ -12,17 +12,24 @@ from .config import QUIET
 QUICK_START = """\
 SearXNG meta-search, no browser.
 
-  sxng --input "nasa cosmos"            10 results, written to results/nasa_cosmos.json
-  sxng --input "nasa cosmos" -v         same, plus a live log of the instance race
+  sxng --input "nasa cosmos"            10 results, shown here and saved
   sxng --input "nasa cosmos" -n 20      20 results instead of 10
+  sxng --input "nasa cosmos" -v         add a live log of the instance race
   sxng --input "nato staff" --pdf       PDF documents only
   sxng --input "nato staff" --profiles  people profiles (LinkedIn /in/)
-  sxng -o - --input "nasa cosmos"       print JSON to stdout, write no file
+  sxng --input "nasa cosmos" --json     print JSON instead of the report
+  sxng --input "nasa cosmos" -o -       JSON to stdout, no file written
+  sxng --results-dir ./out              save the report somewhere else
   sxng                                  this cheat sheet
+
+  Reports land in ./SearchXNG_report/ (created on first run).
+  Piping or redirecting gives you raw JSON automatically, so
+  `sxng --input "x" | jq` keeps working without a flag.
 
   Library:  from searxng_search import search, search_many, SearchResult
   Checks:   python tests/test_pow_parser.py   (offline, no network)
             python tests/test_rotation.py     (offline, no network)
+            python tests/test_cli.py          (offline, no network)
 
   README.md has the details: how it works, the captchas, the file layout.
 """
@@ -49,7 +56,13 @@ def main() -> int:
                     help="max results (default 10)")
     ap.add_argument("-o", "--output",
                     help="output JSON file ('-' = stdout only; "
-                         "default results/<query>.json)")
+                         "default SearchXNG_report/<query>.json)")
+    ap.add_argument("--json", action="store_true",
+                    help="print the JSON to stdout instead of the human "
+                         "readable report (what a pipe or redirect gets anyway)")
+    ap.add_argument("--results-dir", metavar="DIR",
+                    help="where reports are written "
+                         "(default ./SearchXNG_report)")
     ap.add_argument("--pdf", action="store_true",
                     help="only PDF documents (filetype:pdf)")
     ap.add_argument("--profiles", action="store_true",
@@ -103,15 +116,29 @@ def main() -> int:
         return 1
 
     payload = json.dumps(out, indent=2, ensure_ascii=False)
-    if args.output == "-":
+
+    # Where the report goes. `--results-dir` wins, then an explicit path,
+    # then the default ./SearchXNG_report.
+    written = None
+    if args.output != "-":
+        if args.output:
+            written = Path(args.output)
+        elif args.results_dir:
+            written = Path(args.results_dir) / results_path(args.input, mode).name
+        else:
+            written = results_path(args.input, mode)
+        written.parent.mkdir(parents=True, exist_ok=True)
+        written.write_text(payload, encoding="utf-8")
+
+    # Humans get the readable report; machines keep getting pure JSON.
+    # Deciding on isatty() means `sxng ... | jq` and `sxng ... > file.json`
+    # behave exactly as they always did, with no flag to remember.
+    to_stdout_as_json = args.output == "-" or args.json or not sys.stdout.isatty()
+
+    if to_stdout_as_json:
         print(payload)
     else:
-        path = Path(args.output) if args.output else results_path(args.input, mode)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(payload, encoding="utf-8")
-        if args.verbose:
-            print_results(out)
-            print(f"Saved to {path}")
+        print_results(out, saved_to=written)
 
     if checker is not None:
         checker.notice(__version__)   # after the results, on stderr only

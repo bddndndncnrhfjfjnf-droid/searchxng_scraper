@@ -29,7 +29,7 @@ from searxng_scraper import (  # noqa: E402
 )
 from searxng_scraper.cli import main  # noqa: E402
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "SearchResult",

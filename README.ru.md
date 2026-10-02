@@ -35,31 +35,43 @@ python main.py --input "nasa cosmos"
 
 ## Как это выглядит
 
+Без пайпов выводит найденное и говорит, куда сохранился отчёт:
+
 ```console
-$ sxng --input "searxng python api" -n 2
-{
-  "query": "searxng python api",
-  "mode": "web",
-  "effective_query": "searxng python api",
-  "instance": "https://searxng.deggo.fyi/",
-  "path": "html+anubis (10 from HTML)",
-  "elapsed_s": 1.92,
-  "fetched_at": "2026-10-02T22:12:36",
-  "results": [
-    {
-      "title": "GitHub - searxng/searxng: SearXNG is a free internet metasearch …",
-      "url": "https://github.com/searxng/searxng",
-      "snippet": "SearXNG is a free internet metasearch engine …",
-      "engine": "google, bing"
-    }
-  ]
-}
+$ sxng --input "supply chain" -n 3
+
+supply chain  3 results via https://searxng.eshnetwork.space/ [html] in 5.93s
+saved to ./SearchXNG_report/supply_chain.json
+
+ 1. Supply chain - Wikipedia
+    https://en.wikipedia.org/wiki/Supply_chain
+    Supply and demand stacked in a conceptual chain A supply chain is a
+    complex logistics system that consists of facilities that convert …
+
+ 2. Supply Chain Basics: The Ultimate Guide for Beginners
+    https://www.supplychaintoday.com/supply-chain-basics-…/
+    Supply chain basics are the foundation of efficient operations …
+
+ 3. What is supply chain and how does it function? | McKinsey
+    https://www.mckinsey.com/featured-insights/mckinsey-explainers/…
 ```
 
-Результат пишется в `results/searxng_python_api.json`. С `-v` дополнительно
-виден живой лог: какие инстансы пробовались и где решилась капча.
+Тот же запуск ещё и пишет полный JSON в
+`SearchXNG_report/<запрос>.json`.
 
-| Поле | Значение |
+**А через пайп приходит JSON** — без всяких флагов, программа сама проверяет,
+терминал ли stdout:
+
+```console
+$ sxng --input "supply chain" | jq '.results[].url'
+https://en.wikipedia.org/wiki/Supply_chain
+https://www.supplychaintoday.com/supply-chain-basics-…/
+```
+
+Захочешь явно — `--json` для отчёта в терминале, `-o -` для JSON без записи
+файла.
+
+| Поле в JSON | Значение |
 |---|---|
 | `instance` | инстанс, выигравший гонку |
 | `path` | как пришли результаты: `json` / `html` / `html+anubis` / `html+portico` / `json+limiter` |
@@ -74,7 +86,7 @@ r = sxng.search("nasa cosmos", limit=5)
 print(len(r), "результатов через", r.instance)
 print(r.titles[:3])
 
-r.save()                               # -> results/nasa_cosmos.json
+r.save()                               # -> ./SearchXNG_report/nasa_cosmos.json
 ```
 
 Ещё доступно: `search_json()`, `search_many()`, `search_async()`,
@@ -97,7 +109,7 @@ searx.space/data/instances.json        обновляется раз в 6 час
         │     5. капча Portico                   считаем, POST, разбираем HTML
         │
         ▼
-   results/<запрос>.json
+   ./SearchXNG_report/<запрос>.json   + сами ссылки в терминале
 ```
 
 Смысл гонки: лимиты SearXNG живут **на конкретном инстансе**. Сорок инстансов —
@@ -118,11 +130,13 @@ searx.space/data/instances.json        обновляется раз в 6 час
 | `-o PATH` | свой путь вывода; `-o -` — в stdout |
 | `--fresh` | игнорировать кэш инстансов и список отказов |
 | `-j N` | сколько инстансов гонять одновременно (по умолчанию 10; `0`/`1` — по одному) |
-| `-v` | живой лог; без него на stdout только JSON |
+| `-v` | живой лог гонки инстансов |
+| `--json` | вывести JSON в stdout вместо читаемого отчёта |
+| `--results-dir DIR` | писать отчёты не в `./SearchXNG_report`, а куда скажешь |
 | `--update` | спросить PyPI про новую версию прямо сейчас и предложить её |
 | `--no-update-check` | никогда не проверять обновления |
 
-По умолчанию программа молчит, так что пайп идёт прямо в `jq`. Ошибки — в
+В терминале — читаемый отчёт, в пайпе или редиректе — JSON. Ошибки идут в
 stderr, код возврата 1.
 
 ### Проверка обновлений
@@ -143,8 +157,20 @@ PowerShell отдаст второе слово отдельным аргуме�
 
 ## Куда сохраняются результаты
 
-По файлу на запрос в `results/`, имя — сам запрос, существующий файл никогда не
-перезаписывается (повтор получает `_2`, `_3`). Папку можно удалять целиком.
+По файлу на запрос в **`./SearchXNG_report/`** — папка создаётся при первом
+запуске, в той директории, откуда ты запустил команду. Имя — сам запрос,
+существующий файл никогда не перезаписывается (повтор получает `_2`, `_3`).
+
+```bash
+sxng --input "supply chain"                  # ./SearchXNG_report/supply_chain.json
+sxng --input "supply chain" --results-dir ~/reports
+```
+
+Работаешь в непригодной директории? Папка переедет в каталог пакета, потом в
+`~/.sxng_search/` — пока не найдётся что-то доступное для записи. Путь всегда
+печатается, когда отчёт записан.
+
+Всё содержимое одноразовое — папку можно удалять в любой момент.
 
 ## Установка на Termux
 
@@ -207,12 +233,12 @@ sxng --input "nasa cosmos"
 
 ### Куда ложатся файлы на Android
 
-`results/` создаётся рядом с пакетом, а на Termux это значит внутрь
-`site-packages`. Работает, но искать неудобно, поэтому передавай свой путь или
-просто запускай из домашней директории:
+Отчёты попадают в `./SearchXNG_report/` в той директории, откуда ты запустил
+команду, — на Termux это обычно домашняя папка. Если она недоступна для записи,
+папка уезжает в `~/.sxng_search/`, а путь печатается в любом случае:
 
 ```bash
-sxng --input "nasa cosmos" -o ~/nasa.json
+sxng --input "nasa cosmos" --results-dir ~/reports
 ```
 
 Фоновая проверка обновлений использует `urllib` из стандартной библиотеки, а не

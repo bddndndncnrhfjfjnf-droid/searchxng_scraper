@@ -169,6 +169,66 @@ finally:
 check("has_argon2() is a bool either way", isinstance(has_argon2(), bool),
       repr(has_argon2()))
 
+# --- 6. where reports go, and human vs machine output ---------------------
+# The report directory is the thing users asked for by name, and the
+# stdout contract is what every `sxng ... | jq` in the wild depends on.
+import json as _json
+from searxng_scraper.api import RESULTS_DIR, slugify
+
+check("reports land in SearchXNG_report",
+      RESULTS_DIR.name == "SearchXNG_report", str(RESULTS_DIR))
+check("report directory is under the cwd, not site-packages",
+      str(RESULTS_DIR).startswith(str(Path.cwd())) or ".sxng_search" in str(RESULTS_DIR),
+      str(RESULTS_DIR))
+check("slug for a multi-word query", slugify("supply chain") == "supply_chain",
+      slugify("supply chain"))
+
+from searxng_scraper.race import print_results
+
+_ENVELOPE = {
+    "query": "supply chain", "mode": "web", "effective_query": "supply chain",
+    "instance": "https://example.org/", "path": "json", "elapsed_s": 1.5,
+    "fetched_at": "2026-10-02T00:00:00",
+    "results": [
+        {"title": "First", "url": "https://a.example/",
+         "snippet": "x" * 300, "engine": "google"},
+        {"title": "", "url": "https://b.example/", "snippet": "", "engine": ""},
+    ],
+}
+
+
+class _TTY(io.StringIO):
+    def isatty(self):
+        return True
+
+
+buf = _TTY()
+with redirect_stdout(buf):
+    print_results(_ENVELOPE, saved_to="SearchXNG_report/supply_chain.json")
+rendered = buf.getvalue()
+check("report shows the query and the instance",
+      "supply chain" in rendered and "example.org" in rendered)
+check("report shows where it was saved",
+      "SearchXNG_report/supply_chain.json" in rendered)
+check("long snippets are truncated, not dumped",
+      "x" * 200 not in rendered and "..." in rendered, f"{len(rendered)} chars")
+check("a result with an empty title still prints its url",
+      "https://b.example/" in rendered)
+check("ANSI colours are used when stdout is a terminal",
+      "\033[" in rendered, "colour on a tty")
+
+buf = io.StringIO()          # a real StringIO: isatty() is False
+with redirect_stdout(buf):
+    print_results(_ENVELOPE, saved_to=None)
+check("no ANSI escapes when stdout is not a terminal",
+      "\033[" not in buf.getvalue(), "plain text into a pipe")
+
+buf = _TTY()
+with redirect_stdout(buf):
+    print_results({**_ENVELOPE, "results": []}, saved_to=None)
+check("zero results says so instead of printing nothing",
+      "no results" in buf.getvalue())
+
 # ---------------------------------------------------------------------------
 print()
 if FAILURES:

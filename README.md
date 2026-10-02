@@ -35,31 +35,44 @@ python main.py --input "nasa cosmos"
 
 ## What it looks like
 
+Run it with no pipes and it prints the hits, then tells you where the report
+went:
+
 ```console
-$ sxng --input "searxng python api" -n 2
-{
-  "query": "searxng python api",
-  "mode": "web",
-  "effective_query": "searxng python api",
-  "instance": "https://searxng.deggo.fyi/",
-  "path": "html+anubis (10 from HTML)",
-  "elapsed_s": 1.92,
-  "fetched_at": "2026-10-02T22:12:36",
-  "results": [
-    {
-      "title": "GitHub - searxng/searxng: SearXNG is a free internet metasearch …",
-      "url": "https://github.com/searxng/searxng",
-      "snippet": "SearXNG is a free internet metasearch engine …",
-      "engine": "google, bing"
-    }
-  ]
-}
+$ sxng --input "supply chain" -n 3
+
+supply chain  3 results via https://searxng.eshnetwork.space/ [html] in 5.93s
+saved to ./SearchXNG_report/supply_chain.json
+
+ 1. Supply chain - Wikipedia
+    https://en.wikipedia.org/wiki/Supply_chain
+    Supply and demand stacked in a conceptual chain A supply chain is a
+    complex logistics system that consists of facilities that convert …
+
+ 2. Supply Chain Basics: The Ultimate Guide for Beginners
+    https://www.supplychaintoday.com/supply-chain-basics-…/
+    Supply chain basics are the foundation of efficient operations …
+
+ 3. What is supply chain and how does it function? | McKinsey
+    https://www.mckinsey.com/featured-insights/mckinsey-explainers/…
 ```
 
-Written to `results/searxng_python_api.json`. With `-v` you also get a live log
-of which instances were tried and where a captcha got solved.
+The same run also writes the full JSON envelope to
+`SearchXNG_report/<query>.json`.
 
-| Field | Meaning |
+**Pipe it and you get JSON instead**, with no flag to remember — the tool checks
+whether stdout is a terminal:
+
+```console
+$ sxng --input "supply chain" | jq '.results[].url'
+https://en.wikipedia.org/wiki/Supply_chain
+https://www.supplychaintoday.com/supply-chain-basics-…/
+```
+
+Force either side when you want to: `--json` for the report on a terminal, `-o -`
+for JSON with nothing written to disk.
+
+| Field in the JSON | Meaning |
 |---|---|
 | `instance` | the instance that won the race |
 | `path` | how results arrived: `json` / `html` / `html+anubis` / `html+portico` / `json+limiter` |
@@ -74,7 +87,7 @@ r = sxng.search("nasa cosmos", limit=5)
 print(len(r), "results via", r.instance)
 print(r.titles[:3])
 
-r.save()                               # -> results/nasa_cosmos.json
+r.save()                               # -> ./SearchXNG_report/nasa_cosmos.json
 ```
 
 Also available: `search_json()`, `search_many()`, `search_async()`,
@@ -97,7 +110,7 @@ searx.space/data/instances.json        refreshed every 6 hours
         │     5. Portico captcha                  solve it, POST, parse HTML
         │
         ▼
-   results/<query>.json
+   ./SearchXNG_report/<query>.json   + the hits, printed
 ```
 
 The point of racing: SearXNG's limits live **on a single instance**. Forty
@@ -119,12 +132,14 @@ sit on), `limiter.py`, `anubis.py`, `instances.py`, `race.py`, `api.py`, `cli.py
 | `-o PATH` | your own output path; `-o -` prints to stdout |
 | `--fresh` | ignore the instance cache and the bad-instance list |
 | `-j N` | instances raced in parallel (default 10; `0`/`1` = serial) |
-| `-v` | live progress log; without it stdout is *only* JSON |
+| `-v` | live progress log of the instance race |
+| `--json` | print the JSON envelope to stdout instead of the report |
+| `--results-dir DIR` | write reports somewhere other than `./SearchXNG_report` |
 | `--update` | check PyPI for a newer release now and offer it |
 | `--no-update-check` | never check for a newer release |
 
-By default the tool is silent, so it pipes straight into `jq`. Errors go to
-stderr, exit code 1.
+On a terminal you get the readable report; in a pipe or redirect you get JSON.
+Errors go to stderr, exit code 1.
 
 ### Update check
 
@@ -143,8 +158,20 @@ second word over as a separate argument.
 
 ## Where results go
 
-One file per query in `results/`, named after the query, never overwritten — a
-repeat gets `_2`, `_3`. Safe to delete the folder at any time.
+One file per query in **`./SearchXNG_report/`**, created on first run, in the
+directory you ran the command from. The name is the query, and an existing file
+is never overwritten — a repeat gets `_2`, `_3`.
+
+```bash
+sxng --input "supply chain"                  # ./SearchXNG_report/supply_chain.json
+sxng --input "supply chain" --results-dir ~/reports
+```
+
+Working out of a directory you don't own? The folder moves to the package
+directory, then to `~/.sxng_search/`, until it finds somewhere writable. The
+path is always printed when a report is written.
+
+Everything there is disposable — delete the folder whenever you like.
 
 ## Installing on Termux
 
@@ -206,12 +233,12 @@ If `pip` refuses with an "externally managed environment" error, add
 
 ### Where files land on Android
 
-`results/` is created next to the package, which on Termux means inside
-`site-packages`. That works but is an odd place to look, so pass your own path
-or just run from your home directory:
+Reports go to `./SearchXNG_report/` in whatever directory you ran the command
+from, which on Termux is normally your home directory. If that is not writable
+the folder falls back to `~/.sxng_search/`, and the path is printed either way:
 
 ```bash
-sxng --input "nasa cosmos" -o ~/nasa.json
+sxng --input "nasa cosmos" --results-dir ~/reports
 ```
 
 The background update check uses `urllib` from the standard library, not

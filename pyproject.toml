@@ -1,6 +1,6 @@
 [project]
 name = "searchxng_scraper"
-version = "0.3.0"
+version = "0.3.1"
 description = "Browserless SearXNG meta-search: importable library + CLI that races public instances and solves Anubis/Portico proof-of-work on CPU"
 readme = "README.md"
 license = "MIT"

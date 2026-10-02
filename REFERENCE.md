@@ -205,11 +205,17 @@ skips the "bad" ones meanwhile.
 
 ## Where files go
 
-`results/` and `.cache/` are created next to the engine when that location is
-writable. Installed into a **system** `site-packages` it may not be (admin rights
-required), so everything moves to `%LOCALAPPDATA%\.sxng_search\` instead. On
-Linux/macOS it falls back to `~/.sxng_search/`. You can always set your own path
-explicitly: `r.save("out/report.json")`.
+Reports go to `./SearchXNG_report/` in the current working directory, which is
+what a CLI user expects and what `git` and friends do. If that is not writable,
+the folder falls back to the package directory (so a source checkout keeps its
+reports beside the code), then to `%LOCALAPPDATA%\.sxng_search\` on Windows or
+`~/.sxng_search/` elsewhere. The chosen path is printed whenever a report is
+written. Override it per run with `--results-dir`, or per result with
+`r.save("out/report.json")`.
+
+site-packages used to be tried *first*, which put reports in
+`.../site-packages/results/` — writable, invisible, and nowhere anyone looks.
+That order was the bug the `SearchXNG_report` rename came with.
 
 ## When something goes wrong
 

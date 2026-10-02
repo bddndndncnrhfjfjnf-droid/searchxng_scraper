@@ -30,16 +30,23 @@ def quiet() -> None:
 
 
 def data_dir(name: str) -> Path:
-    """Return a writable directory for caches or results, creating it.
+    """Return a writable directory for reports or caches, creating it.
 
-    Tries the project root first, so a checkout keeps its results/ next to the
-    source. An installed package normally lands in a read-only site-packages
-    without admin rights, in which case everything moves to the user profile.
+    Order matters and used to be wrong. The current working directory comes
+    first: that is where a CLI user expects output, and it is what `git` and
+    friends do. The package directory comes next so that a checkout keeps its
+    reports beside the source. The user profile is the last resort, for when
+    neither is writable - a system site-packages installed without admin
+    rights, for instance.
+
+    site-packages used to be FIRST, which meant an installed package wrote its
+    reports into `.../site-packages/results/`: writable, invisible, and not
+    where anyone would ever look for them.
     """
     for candidate in (
+        Path.cwd() / name,
         PACKAGE_DIR.parent / name,
         Path(os.environ.get("LOCALAPPDATA") or Path.home()) / ".sxng_search" / name,
-        Path.cwd() / name,
     ):
         try:
             candidate.mkdir(parents=True, exist_ok=True)
