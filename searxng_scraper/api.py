@@ -9,7 +9,6 @@ people actually use (titles, urls, snippets) plus save()/to_json().
 
 from __future__ import annotations
 
-import asyncio
 import json
 import re
 import sys
@@ -27,26 +26,8 @@ from .race import execute
 RESULTS_DIR = data_dir("results")
 SLUG_MAX = 60
 
-QUICK_START = """\
-SearXNG meta-search, no browser. A short cheat sheet:
-
-  Installed from PyPI (any shell):
-    sxng --input "nasa cosmos"             -> results/nasa_cosmos.json
-    sxng --input "nasa cosmos" -v          same + verbose instance-race log
-    sxng --input "nato staff" --pdf        PDF-only mode
-    sxng                                 this cheat sheet
-
-  From a source checkout (after `pip install -e .` and activating the venv):
-    sxng --input "nato staff" --pdf      PDF-only mode
-    python main.py --input "nasa cosmos" -n 10
-
-  Checks (test_* need no network):
-    python tests/test_pow_parser.py       offline engine checks
-    python tests/test_rotation.py         offline rotation checks
-    python tests/live_audit.py            live audit of every instance
-
-  Details on the captchas, the limiter and the project layout: README.md
-"""
+# The cheat sheet printed by a bare `sxng` lives in cli.py, next to the flags it
+# describes - importing the engine just to print help cost ~300 ms of startup.
 
 
 def slugify(text: str) -> str:
@@ -209,6 +190,7 @@ async def search_async(query: str, **kwargs) -> SearchResult:
         tasks = [sxng.search_async(q) for q in queries]
         for r in await asyncio.gather(*tasks): ...
     """
+    import asyncio  # ~150 ms of import time; only this coroutine needs it
 
     return await asyncio.to_thread(search, query, **kwargs)
 

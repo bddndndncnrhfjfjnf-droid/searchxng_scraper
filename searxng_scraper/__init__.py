@@ -23,31 +23,26 @@ How a single query actually runs, in order:
 
 pow.solve() is the shared proof-of-work engine underneath both captchas, and
 config.py holds the knobs (TLS fingerprint, timeouts, where files go).
+
+Imports here are lazy on purpose. Pulling in the engine costs ~130 ms (curl_cffi,
+concurrent.futures, the PoW pool), and the two commands that must feel instant -
+a bare `sxng` and `sxng --help` - never touch it. Attribute access below
+triggers the real import once, then caches it.
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+# config.py is cheap (stdlib only) and its state has to be set at import time,
+# so this one stays eager.
 from .config import quiet, set_verbose
-from .api import (
-    QUICK_START,       # noqa: F401  - the cheat sheet the CLI prints
-    RESULTS_DIR,       # noqa: F401  - where results go by default
-    SearchResult,
-    available_instances,
-    clear_bad_instances,
-    results_path,
-    search,
-    search_async,
-    search_json,
-    search_many,
-    slugify,
-)
-from .race import execute, print_results
+
+__version__ = "0.3.0"
 
 # Imported as a library, not run as a script: keep stdout clean so the host
 # program owns it. set_verbose(True) brings the race log back.
 quiet()
-
-__version__ = "0.3.0"
 
 __all__ = [
     "SearchResult",
@@ -63,3 +58,51 @@ __all__ = [
     "set_verbose",
     "slugify",
 ]
+
+# Public name -> the submodule that actually defines it.
+_EXPORTS = {
+    "SearchResult": "api",
+    "available_instances": "api",
+    "clear_bad_instances": "api",
+    "results_path": "api",
+    "search": "api",
+    "search_async": "api",
+    "search_json": "api",
+    "search_many": "api",
+    "slugify": "api",
+    "QUICK_START": "cli",
+    "RESULTS_DIR": "api",
+    "execute": "race",
+    "print_results": "race",
+}
+
+if TYPE_CHECKING:  # what a type checker and an IDE should see
+    from .api import (
+        RESULTS_DIR,  # noqa: F401
+        SearchResult,
+        available_instances,
+        clear_bad_instances,
+        results_path,
+        search,
+        search_async,
+        search_json,
+        search_many,
+        slugify,
+    )
+    from .cli import QUICK_START  # noqa: F401
+    from .race import execute, print_results
+
+
+def __getattr__(name: str):
+    """Import a public name from the submodule that owns it (PEP 562)."""
+    module = _EXPORTS.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from importlib import import_module
+    value = getattr(import_module(f".{module}", __name__), name)
+    globals()[name] = value          # cache: the next lookup is a dict hit
+    return value
+
+
+def __dir__():
+    return sorted(__all__)

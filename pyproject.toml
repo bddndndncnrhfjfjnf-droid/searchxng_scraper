@@ -29,8 +29,16 @@ classifiers = [
 ]
 dependencies = [
     "curl_cffi>=0.16",
-    "argon2-cffi>=25.1",  # only for the rare argon2id Anubis challenge
 ]
+
+# argon2-cffi is only needed for the rare argon2id flavour of the Anubis
+# challenge - every other challenge path works without it, and the import is
+# lazy. Keeping it out of the required list matters: its cffi bindings have no
+# prebuilt wheel for Android, so as a hard dependency pip compiled them from
+# source on Termux (1.8 MB + a working toolchain) for a feature most installs
+# never touch.
+[project.optional-dependencies]
+argon2 = ["argon2-cffi>=25.1"]
 
 [project.urls]
 Repository = "https://github.com/bddndndncnrhfjfjnf-droid/searchxng_scraper"

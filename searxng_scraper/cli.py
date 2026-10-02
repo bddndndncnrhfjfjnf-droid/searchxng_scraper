@@ -8,8 +8,24 @@ import sys
 from pathlib import Path
 
 from .config import QUIET
-from .api import QUICK_START, results_path
-from .race import execute, print_results
+
+QUICK_START = """\
+SearXNG meta-search, no browser.
+
+  sxng --input "nasa cosmos"            10 results, written to results/nasa_cosmos.json
+  sxng --input "nasa cosmos" -v         same, plus a live log of the instance race
+  sxng --input "nasa cosmos" -n 20      20 results instead of 10
+  sxng --input "nato staff" --pdf       PDF documents only
+  sxng --input "nato staff" --profiles  people profiles (LinkedIn /in/)
+  sxng -o - --input "nasa cosmos"       print JSON to stdout, write no file
+  sxng                                  this cheat sheet
+
+  Library:  from searxng_search import search, search_many, SearchResult
+  Checks:   python tests/test_pow_parser.py   (offline, no network)
+            python tests/test_rotation.py     (offline, no network)
+
+  README.md has the details: how it works, the captchas, the file layout.
+"""
 
 # cli.py - flags, stdout, exit codes
 # ===========================================================================
@@ -52,6 +68,11 @@ def main() -> int:
     if not args.verbose:
         QUIET.set()            # default: mute progress chatter unless -v
     mode = "profiles" if args.profiles else ("pdf" if args.pdf else "web")
+
+    # Only now is the engine needed. Importing it costs ~300 ms (curl_cffi,
+    # asyncio), and everything above this line works without it.
+    from .api import results_path
+    from .race import execute, print_results
 
     try:
         out = execute(args.input, limit=args.limit, mode=mode,

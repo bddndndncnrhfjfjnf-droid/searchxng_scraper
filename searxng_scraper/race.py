@@ -17,8 +17,6 @@ import queue
 import threading
 import time
 
-from curl_cffi import requests as cffi
-
 from .anubis import (
     get_anubis_cookies,
     has_anubis,
@@ -26,7 +24,7 @@ from .anubis import (
     refresh_anubis_cookies,
     set_quiet,
 )
-from .config import IMPERSONATE, qprint
+from .config import IMPERSONATE, cffi, qprint
 from .htmlparse import parse_results_html
 from .instances import (
     MAX_INSTANCES_TO_TRY,
@@ -57,7 +55,7 @@ def _anubis_session(base_url: str, refresh: bool = False):
     cookies = get(base_url, UA)
     if not cookies:
         return None
-    s = cffi.Session(impersonate=IMPERSONATE)
+    s = cffi().Session(impersonate=IMPERSONATE)
     for k, v in cookies.items():
         s.cookies.set(k, v)
     return s

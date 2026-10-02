@@ -70,10 +70,50 @@ def set_verbose(enabled: bool = True) -> None:
         QUIET.set()
 
 
+_cffi = None
+
+
+def cffi():
+    """Import curl_cffi on first use and cache it.
+
+    Importing it costs ~120 ms (it dlopens libcurl and resolves the TLS
+    backend), which is pure waste for `sxng` with no arguments or `--help` -
+    neither of them ever touches the network.
+
+    Failing here rather than at module import also means the message can
+    explain itself. On Android/Termux curl_cffi is often packaged against a
+    different Python than the one installed, and dies inside dlopen with a
+    bare "libpython3.X.so not found" that means nothing to whoever typed the
+    command.
+    """
+    global _cffi
+    if _cffi is None:
+        try:
+            from curl_cffi import requests as _cffi_module
+        except ImportError as e:
+            raise ImportError(
+                "curl_cffi could not be imported, and this tool cannot work "
+                "without it.\n\n"
+                "  Desktop / WSL / macOS:  pip install --force-reinstall curl_cffi\n"
+                "  Termux:               pkg upgrade python-curl-cffi\n"
+                "                         (or: pip install --force-reinstall curl_cffi)\n\n"
+                f"Underlying error: {e}"
+            ) from e
+        _cffi = _cffi_module
+    return _cffi
+
+
 def has_argon2() -> bool:
     """True when the optional argon2-cffi extra is installed.
 
     Only the rare argon2id flavour of the Anubis challenge needs it; every
     other challenge path works without it.
+
+    argon2-cffi is an extra, not a hard dependency, so the common case is
+    "not installed". find_spec() raises rather than returning None when the
+    PARENT package is missing, hence the guard.
     """
-    return importlib.util.find_spec("argon2.low_level") is not None
+    try:
+        return importlib.util.find_spec("argon2.low_level") is not None
+    except (ImportError, ValueError):
+        return False

@@ -10,9 +10,7 @@ from __future__ import annotations
 import re
 import time
 
-from curl_cffi import requests as cffi
-
-from .config import IMPERSONATE
+from .config import IMPERSONATE, cffi
 from .pow import solve
 
 # limiter.py - botdetection / link_token / Portico helpers
@@ -51,14 +49,14 @@ BROWSER_HEADERS = {
 _TOKEN_CSS_RE = re.compile(r'href="(/client[^"]+\.css)"')
 
 
-def new_session(user_agent: str) -> cffi.Session:
+def new_session(user_agent: str):
     """curl_cffi session with Chrome TLS fingerprint and browser-like headers."""
-    s = cffi.Session(impersonate=IMPERSONATE)
+    s = cffi().Session(impersonate=IMPERSONATE)
     s.headers.update({"User-Agent": user_agent, **BROWSER_HEADERS})
     return s
 
 
-def ping_link_token(s: cffi.Session, base_url: str, timeout: int = 15) -> bool:
+def ping_link_token(s, base_url: str, timeout: int = 15) -> bool:
     """Fetch the randomized /client<token>.css like a browser loading the page.
 
     Marks this client network as "not suspicious" for the limiter's
@@ -84,7 +82,7 @@ def is_portico_captcha(html: str) -> bool:
     return "captcha-screen" in html and 'data-captcha-payload="' in html
 
 
-def solve_portico(s: cffi.Session, base_url: str, html: str, user_agent: str,
+def solve_portico(s, base_url: str, html: str, user_agent: str,
                   timeout: int = 25) -> str | None:
     """Solve the Portico proof-of-work and POST it back.
 

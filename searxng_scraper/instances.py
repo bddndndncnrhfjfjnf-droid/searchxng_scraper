@@ -10,9 +10,7 @@ from __future__ import annotations
 import json
 import time
 
-from curl_cffi import requests as cffi
-
-from .config import IMPERSONATE, data_dir
+from .config import IMPERSONATE, cffi, data_dir
 
 # instances.py - where the instance list comes from, and which ones to skip
 # ===========================================================================
@@ -58,8 +56,8 @@ BAD_TTLS = {                      # per failure class
 def _get(url: str, *, params: dict | None = None, headers: dict | None = None,
          timeout: float = TIMEOUT):
     """curl_cffi GET with the Chrome TLS fingerprint used everywhere here."""
-    return cffi.get(url, params=params, headers=headers,
-                    impersonate=IMPERSONATE, timeout=timeout)
+    return cffi().get(url, params=params, headers=headers,
+                      impersonate=IMPERSONATE, timeout=timeout)
 
 def _load_state() -> dict:
     try:

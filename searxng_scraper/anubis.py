@@ -14,9 +14,7 @@ import threading
 import time
 from urllib.parse import urlparse
 
-from curl_cffi import requests as cffi
-
-from .config import IMPERSONATE, data_dir, has_argon2, qprint
+from .config import IMPERSONATE, cffi, data_dir, has_argon2, qprint
 from .pow import leading_zero_bits, solve
 
 # anubis.py - Anubis (Techaro) PoW challenge solver
@@ -246,7 +244,7 @@ def has_anubis(base_url: str, user_agent: str, timeout: int = 15) -> bool | None
 
     base = base_url if base_url.endswith("/") else base_url + "/"
     try:
-        resp = cffi.Session(impersonate=IMPERSONATE).get(
+        resp = cffi().Session(impersonate=IMPERSONATE).get(
             base, headers={"User-Agent": user_agent}, timeout=timeout
         )
         verdict = is_challenge_page(resp.text)
@@ -266,7 +264,7 @@ def solve_and_get_cookies(base_url: str, user_agent: str) -> dict | None:
     Returns None if solving failed or the site is not Anubis-protected.
     """
     base = base_url if base_url.endswith("/") else base_url + "/"
-    s = cffi.Session(impersonate=IMPERSONATE)
+    s = cffi().Session(impersonate=IMPERSONATE)
 
     # 1. Fetch the interstitial; session jar picks up the verification cookie
     resp = s.get(base, headers={"User-Agent": user_agent}, timeout=20)

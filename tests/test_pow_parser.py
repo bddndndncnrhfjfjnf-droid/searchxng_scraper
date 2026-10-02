@@ -15,6 +15,8 @@ htmlparse.py). All offline - no network. Checks:
   5. benchmark: single-core vs multi-core on a realistic challenge
   6. htmlparse.parse_results_html() on SearXNG-shaped fixtures (simple theme),
      nested tags, relative hrefs, image-article filtering
+  7. config.has_argon2() degrades to False when the optional argon2 extra is
+     not installed (the default), instead of raising
 """
 
 from __future__ import annotations
@@ -201,6 +203,24 @@ FIXTURE2 = ('<article class="result result-default"><h3><a href="https://x.org/"
 res = parse_results_html(FIXTURE2)
 check("empty title kept as result with url",
       len(res) == 1 and res[0]["url"] == "https://x.org/", repr(res))
+
+# --- 7. optional argon2 extra must degrade, never crash -------------------
+# argon2-cffi is an EXTRA, so the common install has no argon2 at all.
+# importlib.util.find_spec() raises ModuleNotFoundError (not None) when the
+# parent package is missing, which used to crash the Anubis path on any
+# install that skipped the extra.
+import searxng_scraper.config as config_mod
+
+saved = sys.modules.get("argon2")
+try:
+    sys.modules["argon2"] = None      # find_spec() then takes the missing-parent path
+    check("has_argon2() returns False, not raises, when argon2 is absent",
+          config_mod.has_argon2() is False, repr(config_mod.has_argon2()))
+finally:
+    if saved is None:
+        del sys.modules["argon2"]
+    else:
+        sys.modules["argon2"] = saved
 
 # ---------------------------------------------------------------------------
 print()
